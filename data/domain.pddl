@@ -36,7 +36,7 @@
    (hold ?arm - arm ?base - base)
    (free ?arm - arm) ;; instead of (not (exists (?base) (hold ?arm ?base)))
 
-   (used ?component - component)
+   ;; (used ?component - component)
    
    (finished ?job - job ?base - base))
 
@@ -101,7 +101,7 @@
 	   ;; MOD : CARRY-OUT device only.
 	   ;; MOD : It doesn't care if the destination is already used.
 	   ;; MOD : After the action the base acts like it had disappeard.
-	   :parameters (?base - base ?from - position ?to - conveyor)
+	   :parameters (?base - base ?from - table ?to - conveyor)
 	   :precondition (and (at ?base ?from)
 			      (connected ?from ?to))
 	   :effect (and (at ?base ?to)
@@ -150,6 +150,9 @@
   (:action assemble-with-arm
 	   ;; Base Assemble Picked Parts by Arm: Uses an arm
 	   ;; (?arm) to attach a part (?part) to a base.
+	   ;; 
+	   ;; NOTE: components are not distinguished between each
+	   ;;       other
 	   :parameters (?component - component
 			?job ?prev-job - job
 			?base - base
@@ -160,7 +163,6 @@
 			  (job-available-at ?job ?pos)
 			  (uses ?job ?component)
 			  ;; state specification
-			  (not (used ?component))
 			  (hold ?arm ?component)
 			  (at ?arm ?pos)
 			  (at ?base ?pos)
@@ -168,7 +170,6 @@
 			  (depends ?prev-job ?job)
 			  (finished ?prev-job ?base))
 	   :effect (and (finished ?job ?base)
-			(used ?component)
 			(free ?arm)
 			(not (hold ?arm ?component)))))
 
