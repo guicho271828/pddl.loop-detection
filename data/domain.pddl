@@ -112,12 +112,15 @@
 	   ;; Pick Parts by Arm: Use an arm (?arm) to pick up a part
 	   ;; (?part). The part will later be used by a BaseAssem-
 	   ;; blePickedPartsXByArm action (see below).
+	   ;; 
+	   ;; NOTE: basically, we assume there are unlimited number of
+	   ;; components in trays. That's why this action lacks the
+	   ;; delete effect on the place of the component.
 	   :parameters (?component - component ?arm - arm ?pos - tray)
 	   :precondition (and (free ?arm)
 			      (at ?arm ?pos)
 			      (at ?component ?pos))
 	   :effect (and (hold ?arm ?component)
-			(not (at ?component ?pos))
 			(not (free ?arm))))
   
   (:action assemble-with-machine
