@@ -6,3 +6,9 @@
 *.x86f
 *~
 .#*
+
+*.cost
+*.plan.*
+*.log
+*.sas*
+*.time
