@@ -25,16 +25,18 @@
    ;; All bases are at CARRY-IN
    (at base carry-in)
 
+   ;; Explain where each type of components is placed.
+
    ;; Base and jobs. All bases must have finished NOTHING-DONE
    (finished nothing-done base)
 
    ;; Arms. Initially it can be anywhere, but I suggest you to keep
    ;; them collision-free.
-   (at arm carry-out)
+   (at arm table-out)
 
    ;; Arm presence. The number of these clause would be exactly the
    ;; same as that of arms.
-   (arm-present carry-out)
+   (arm-present table-out)
 
    ;; All arms should be free.
    (free arm))
