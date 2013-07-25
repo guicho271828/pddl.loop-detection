@@ -1,30 +1,44 @@
-
-(in-package :pddl.loop-detection-test)
-
 (define (domain cell-assembly)
-  (:require :typing)
-  (:types arm position base part-X)
-  (:predicates (AT ?ARM ?FROM)
-	       (AT-JOB-A ?POS)
-	       (AT-ASSEMBLE-PARTX ?POS)
-	       (OCCUPIED ?TO)
-	       (NOT-OCCUPIED ?TO)
-	       
-	       (FREE ?ARM)
-	       (REACHABLE ?ARM ?TO)
-	       (HOLD ?ARM ?BASE)
-	       
-	       (BASELOCATION ?POS)
-	       (NOTBASEPLACED ?POS)
-	       
-	       (CONNECT ?FROM ?TO)
-	       (FINISHED-JOB-A ?BASE)
-	       (UNFINISH-JOB-A ?BASE)
-	       (UNFINISH-JOB-B ?BASE)
-	       (USED ?PART-X)
-	       (UNUSED ?PART-X)
-	       (ASSEMBLE-PART-B ?BASE)
-	       (ASSEMBLE-PART-X ?BASE))
+  (:requirements :strips :typing
+		 :negative-preconditions)
+  (:types table - position     ; The place to attach components with arms.
+	  container - position ; Has infinite capacity to store things.
+	  conveyor - container ; Slide things in/away. Infinite length.
+	  tray - container     ; Part trays.
+	  machine - table      ; Tables which does specific jobs by itself.
+	  machine-job - job    ; Jobs which should be done on machines.
+	  arm		       ;
+	  position	       ; Where the arms is potentially able to go
+	  base		       ;
+	  component	       ; Things which should be attatched on tables.
+	  job)
+  (:constants carry-in - conveyor  ; the start of the base
+	      carry-out - conveyor ; the goal of the base
+	      table-in - table	   ; always connected to the conveyor
+	      table-out - table	   ; always connected to the conveyor
+	      nothing-done - job)  ; general start state of any base
+  (:predicates 
+
+   ;; arm attributes
+   (reachable ?arm - arm ?to - position)
+   ;; position attributes
+   (connected ?from ?to - position) ;; by conveyor
+   ;; job attributes
+   (depends ?prev-job ?job - job)
+   (job-available-at ?job - job ?pos - table)
+   (uses ?job - job ?component - component)
+   
+   ;; state description
+   (at ?obj - object ?pos - position)
+   (arm-present ?pos - position)
+   (base-present ?pos - position)
+   
+   (hold ?arm - arm ?base - base)
+   (free ?arm - arm) ;; instead of (not (exists (?base) (hold ?arm ?base)))
+
+   (used ?component - component)
+   
+   (finished ?job - job ?base - base))
 
   (:action move-arm
 	   ;;   Moves the arm (?arm) from the source
@@ -34,71 +48,79 @@
 	   ;; at a time.
 	   :parameters (?arm - arm ?from - position ?to - position)
 	   :precondition (and (at ?arm ?from)
-			      (not-occupied ?to)
+			      (not (arm-present ?to))
 			      (reachable ?arm ?to))
 	   :effect (and (at ?arm ?to)
-			(not-occupied ?from)
-			(occupied ?to)
+			(arm-present ?to)
 			(not (at ?arm ?from))
-			(not (occupied ?from))
-			(not (not-occupied ?to))))
+			(not (arm-present ?from))))
   
   (:action eject-base
 	   ;; Eject Base: Uses an arm (?arm) to grasp and pick up a
 	   ;; base (?base) from a machine or a table (?pos). Resets
 	   ;; the mutual exclusion constraint enforcing the rule that
 	   ;; at most 1 base can be at a location (notbaseplaced ?pos)
-	   :parameters (?base - base ?arm - arm ?pos - position)
+	   :parameters (?base - base ?arm - arm ?pos - table)
 	   :precondition (and (at ?base ?pos)
 			      (at ?arm ?pos)
 			      (free ?arm))
 	   :effect (and (hold ?arm ?base)
-			(notbaseplaced ?pos)
 			(not (free ?arm))
+			(not (base-present ?pos))
 			(not (at ?base ?pos))))
   
   (:action set-base
-	   ;; Set Base Base: Commands an arm (?arm) that is hold- ing
+	   ;; Set Base: Commands an arm (?arm) that is holding
 	   ;; a particular base (?base) to set the base on a machine
 	   ;; or table (?pos). Each machine/table has a mutual
 	   ;; exclusion constraint ensuring at most 1 base is placed
-	   ;; on it (notbase- placed).
-	   :parameters (?base - base ?arm - arm ?pos - position)
+	   ;; on it (notbaseplaced).
+	   :parameters (?base - base ?arm - arm ?pos - table)
 	   :precondition (and (hold ?arm ?base)
 			      (at ?arm ?pos)
-			      (notbaseplaced ?pos)
-			      (baselocation ?pos))
+			      (not (base-present ?pos)))
 	   :effect (and (at ?base ?pos)
 			(free ?arm)
 			(not (hold ?arm ?base))
-			(not (notbaseplaced ?pos))))
-  
-  (:action slide-base
-	   ;; Slide Base: Uses a slide (carry-in/carry-out) device to
-	   ;; move a base.
-	   :parameters (?base - base ?from - position ?to - position)
+			(base-present ?pos)))
+
+  (:action slide-base-in
+	   ;; Slide Base: Uses a slide device to move a base. 
+	   ;; MOD : CARRY-IN device only.
+	   ;; MOD : It DOES care if the destination is already used.
+	   :parameters (?base - base ?from - conveyor ?to - table)
 	   :precondition (and (at ?base ?from)
-			      (connect ?from ?to)
-			      (notbaseplaced ?to)
-			      (baselocation ?to))
+			      (connected ?from ?to)
+			      (not (base-present ?to)))
 	   :effect (and (at ?base ?to)
 			(not (at ?base ?from))
-			(not (notbaseplaced ?to))
-			(notbaseplaced ?from)))
+			(base-present ?to)))
+
+  (:action slide-base-out
+	   ;; Slide Base: Uses a slide device to move a base. 
+	   ;; MOD : CARRY-OUT device only.
+	   ;; MOD : It doesn't care if the destination is already used.
+	   ;; MOD : After the action the base acts like it had disappeard.
+	   :parameters (?base - base ?from - position ?to - conveyor)
+	   :precondition (and (at ?base ?from)
+			      (connected ?from ?to))
+	   :effect (and (at ?base ?to)
+			(not (at ?base ?from))
+			(not (base-present ?from))))
   
-  (:action pickup-part-X
+  (:action pickup-component
 	   ;; Pick Parts by Arm: Use an arm (?arm) to pick up a part
 	   ;; (?part). The part will later be used by a BaseAssem-
 	   ;; blePickedPartsXByArm action (see below).
-	   :parameters (?part-X - part-X ?arm - arm ?pos - position)
+	   :parameters (?component - component ?arm - arm ?pos - tray)
 	   :precondition (and (free ?arm)
 			      (at ?arm ?pos)
-			      (at ?part-X ?pos))
-	   :effect (and (hold ?arm ?part-X)
-			(not (at ?part-X ?pos))
+			      (at ?component ?pos))
+	   :effect (and (hold ?arm ?component)
+			(not (at ?component ?pos))
 			(not (free ?arm))))
   
-  (:action Base-Assemble-JobA-by-Machine
+  (:action assemble-with-machine
 	   ;; Base Assemble by Machine: Use a machine (?pos) to
 	   ;; perform an assembly operation (e.g., tighten the screw) on
 	   ;; a base (?base).
@@ -108,26 +130,42 @@
 	   ;; tions, finished_Step_X and unfihished_Step_X, which rep-
 	   ;; resent whether an assembly step X has been performed
 	   ;; already.
-	   :parameters (?base - base ?pos - position)
-	   :precondition (and (Assemble-Part-B ?base)
-			      (at-Job-A ?pos)
-			      (at ?base ?pos))
-	   :effect (and (finished-Job-A ?base)
-			(not (unfinish-Job-A ?base))))
-  
-  (:action Base-Assemble-Picked-PartX-by-Arm
+	   :parameters (?base - base
+			?machine - machine
+			?job - machine-job
+			?prev-job - job)
+	   :precondition (and ;; machine specification
+			  (job-available-at ?job ?machine)
+			  ;; state specification
+			  (not (finished ?job ?base))
+			  (at ?base ?machine)
+			  ;; job dependency specification (linear)
+			  (depends ?prev-job ?job)
+			  (finished ?prev-job ?base))
+	   :effect (finished ?job ?base))
+
+  (:action assemble-with-arm
 	   ;; Base Assemble Picked Parts by Arm: Uses an arm
 	   ;; (?arm) to attach a part (?part) to a base.
-	   :parameters
-	   (?part-X - part-X ?base - base ?arm - arm ?pos - position)
-	   :precondition (and (finished-Job-A ?base)
-			      (unused ?part-X)
-			      (at ?base ?pos) (at ?arm ?pos)
-			      (at-Assemble-PartX ?pos) (hold ?arm ?part-X))
-	   :effect (and (Assemble-Part-X ?base)
-			(used ?part-X)
+	   :parameters (?component - component
+			?job ?prev-job - job
+			?base - base
+			?arm - arm
+			?pos - table)
+	   :precondition (and
+			  ;; job specification
+			  (job-available-at ?job ?pos)
+			  (uses ?job ?component)
+			  ;; state specification
+			  (not (used ?component))
+			  (hold ?arm ?component)
+			  (at ?arm ?pos)
+			  (at ?base ?pos)
+			  ;; job dependency specification (linear)
+			  (depends ?prev-job ?job)
+			  (finished ?prev-job ?base))
+	   :effect (and (finished ?job ?base)
+			(used ?component)
 			(free ?arm)
-			(not (unused ?part-X))
-			(not (hold ?arm ?part-X))
-			(not (unfinish-job-b ?base)))))
+			(not (hold ?arm ?component)))))
 

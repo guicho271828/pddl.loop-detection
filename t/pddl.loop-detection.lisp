@@ -24,15 +24,17 @@
    (asdf:system-relative-pathname
     :pddl.loop-detection "data/")))
 
-(defvar +problem+ (data "pfile1"))
 (defvar +domain+ (data "domain.pddl"))
-(defvar +plan+ (data "pfile1.plan.1"))
+(defvar +problem+ (data "p1.pddl"))
+(defvar +plan+ (data "p1.plan.1"))
 
 (print +problem+)
 (print +domain+)
 (print +plan+)
 
-(defvar domain)
-(defvar problem)
-(defvar plan)
+(test parse-domain
+  (finishes (parse-file +domain+)))
+
+(test parse-problem
+  (finishes (parse-file +problem+)))
 

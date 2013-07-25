@@ -11,8 +11,10 @@
   :author ""
   :license ""
   :depends-on (:pddl.loop-detection
+	       :pddl-test
                :fiveam)
   :components ((:module "t"
                 :components
-                ((:file "pddl.loop-detection"))))
+                ((:file :pddl.loop-detection)
+		 (:file :run-test))))
   :perform (load-op :after (op c) (asdf:clear-system c)))
