@@ -35,7 +35,10 @@ SEARCH_DIR=$FD_DIR/src/search
 SEARCH="$SEARCH_DIR/downward $OPTIONS"
 
 
-if [ -e domain.pddl ]
+if [ -e $2 ]
+then
+    DOMAIN=$2
+elif [ -e domain.pddl ]
 then
     DOMAIN=domain.pddl
 elif [ -e $PROBLEM_NUM-domain.pddl ]
