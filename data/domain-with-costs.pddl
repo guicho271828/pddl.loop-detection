@@ -1,4 +1,4 @@
-(define (domain cell-assembly)
+(define (domain cell-assembly-cost)
   (:requirements :strips :typing
 		 :negative-preconditions
 		 :action-costs)
@@ -45,7 +45,7 @@
    (total-cost)
    (loading-cost)
    (job-cost ?job - job)
-   (move-cost ?from ?to - position))
+   (move-cost ?from ?to - position) - number)
 
   (:action move-arm
 	   ;;   Moves the arm (?arm) from the source

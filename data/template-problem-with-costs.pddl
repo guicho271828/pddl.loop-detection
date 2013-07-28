@@ -1,5 +1,5 @@
-(define (problem cell-assembly-p1)
-  (:domain cell-assembly)
+(define (problem cell-assembly-with-cost-p1)
+  (:domain cell-assembly-cost)
   (:objects arm - arm
 	    b1 - base
 	    - table
