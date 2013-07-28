@@ -28,6 +28,10 @@
 (defvar +problem+ (data "p1.pddl"))
 (defvar +plan+ (data "p1.plan.1"))
 
+(defvar +c-domain+ (data "domain-with-costs.pddl"))
+(defvar +c-problem+ (data "model2b1c.pddl"))
+(defvar +c-plan+ (data "model2b1c.plan.1"))
+
 (print +problem+)
 (print +domain+)
 (print +plan+)
