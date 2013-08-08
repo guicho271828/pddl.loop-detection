@@ -9,8 +9,9 @@
 	  machine-job - job    ; Jobs which should be done on machines.
 	  arm		       ;
 	  position	       ; Where the arms is potentially able to go
-	  base		       ;
-	  component	       ; Things which should be attatched on tables.
+	  holdable
+	  base - holdable      ;
+	  component - holdable ; Things which should be attatched on tables.
 	  job)
   (:constants carry-in - conveyor  ; the start of the base
 	      carry-out - conveyor ; the goal of the base
@@ -33,7 +34,7 @@
    (arm-present ?pos - position)
    (base-present ?pos - position)
    
-   (hold ?arm - arm ?base - base)
+   (hold ?arm - arm ?holdable - holdable)
    (free ?arm - arm) ;; instead of (not (exists (?base) (hold ?arm ?base)))
 
    ;; (used ?component - component)
