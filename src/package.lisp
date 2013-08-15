@@ -9,7 +9,10 @@
 	:iterate
 	:optima
         :pddl
-	:alexandria))
+	:alexandria)
+  (:shadowing-import-from
+   :iterate :minimize :maximize))
 (in-package :pddl.loop-detection)
 
 ;; blah blah blah.
+

@@ -7,9 +7,13 @@
   (:use :cl
 	:guicho-utilities
 	:iterate
+	:alexandria
 	:optima
-        :pddl.loop-detection
+	:optima
         :pddl
+	:pddl.scheduler
+        :pddl.loop-detection
+        :pddl-test
         :fiveam)
   (:shadow :place)
   (:shadowing-import-from :fiveam :fail))
