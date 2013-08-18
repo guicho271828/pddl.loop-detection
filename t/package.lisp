@@ -9,7 +9,7 @@
 	:iterate
 	:alexandria
 	:optima
-	:optima
+	:repl-utilities
         :pddl
 	:pddl.scheduler
         :pddl.loop-detection
