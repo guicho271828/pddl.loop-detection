@@ -13,6 +13,7 @@
         :pddl
 	:pddl.scheduler
         :pddl.loop-detection
+	:pddl.plan-optimizer
         :pddl-test
         :fiveam)
   (:shadow :place :maximize :minimize)

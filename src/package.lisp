@@ -11,6 +11,7 @@
 	:cl-syntax
         :pddl
 	:pddl.scheduler
+	:pddl.plan-optimizer
 	:alexandria)
   (:shadowing-import-from
    :iterate :minimize :maximize))
