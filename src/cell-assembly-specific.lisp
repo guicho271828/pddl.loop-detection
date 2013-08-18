@@ -7,6 +7,9 @@
 ;; move-arm-holding で運んでいる途中は、(hold ?arm ?base) から、
 ;; base の場所は ?arm だと認識する必要がある。
 
+(defun %appears (obj actual-state)
+  (find obj (parameters actual-state)))
+
 @export
 (defun extract-base-positions (base timed-actions)
   (iter (for ta in (filter-schedule
@@ -35,18 +38,23 @@
 	(setf (fourth pinfo) (first info))
 	(setf (third pinfo)
 	      (intersection
-		(remove-if
-		 (lambda (obj)
-		   (some (lambda (eff+)
-			   (find obj (parameters eff+)))
-			 (add-list (second info))))
-		 places)
-		(remove-if
-		 (lambda (obj)
-		   (some (lambda (eff+)
-			   (find obj (parameters eff+)))
-			 (delete-list (second pinfo))))
-		 pplaces)))))
+		(remove-if-not
+		 (let ((action (second pinfo)))
+		   (lambda (obj)
+		     (let ((fn (curry #'%appears obj)))
+		       ;; add rules here!
+		       (and (not (some fn (delete-list action)))
+			    (or (some fn (positive-preconditions action))
+				(some fn (add-list action)))))))
+		 pplaces)
+		
+		(remove-if-not
+		 (let ((action (second info)))
+		   (lambda (obj)
+		     (let ((fn (curry #'%appears obj)))
+		       ;; add rules here!
+		       (and (some fn (positive-preconditions action))))))
+		 places)))))
 
 
 
@@ -57,7 +65,7 @@
 	  (match list
 	    ((list start action places end)
 	     (format s "
-at ~8tt=~a, action ~a is run. after this action the place is:
+at t=~a, action ~a is run. after this action the place is:
 
 ~{~4t~w~^~%~}
 "
