@@ -34,12 +34,7 @@
 	
 	(setf (fourth pinfo) (first info))
 	(setf (third pinfo)
-	      (remove-if
-	       (lambda (obj)
-		 (some (lambda (eff+)
-				     (find obj (parameters eff+)))
-				   (add-list (second info))))
-	       (intersection places pplaces)))))
+	      (union places pplaces))))
 
 
 
