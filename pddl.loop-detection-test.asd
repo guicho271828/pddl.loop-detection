@@ -15,6 +15,6 @@
                :fiveam)
   :components ((:module "t"
                 :components
-                ((:file :pddl.loop-detection)
+                ((:file :package)
 		 (:file :run-test))))
   :perform (load-op :after (op c) (asdf:clear-system c)))

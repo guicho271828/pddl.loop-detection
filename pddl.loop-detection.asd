@@ -11,10 +11,12 @@
   :version "0.1"
   :author "Masataro Asai"
   :license "LLGPL"
-  :depends-on (:pddl)
+  :depends-on (:pddl :pddl.scheduler)
   :components ((:module "src"
                 :components
-                ((:file :package))))
+                ((:file :package)
+		 ;; (:file :predicate-attribute)
+		 )))
   :description ""
   :long-description
   #.(with-open-file (stream (merge-pathnames
