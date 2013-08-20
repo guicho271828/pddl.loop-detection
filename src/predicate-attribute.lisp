@@ -2,82 +2,88 @@
 (in-package :pddl.loop-detection)
 (use-syntax :annot)
 
-;;よくわからん
-
 @export
 (defun related-actions (predicate)
   (match predicate
     ((pddl-predicate name domain)
      (remove-if-not
       (named-lambda per-action (action)
-	(walk-tree
-	 (lambda (branch cont)
-	   (match branch
-	     ((op _ preds) (funcall cont preds))
-	     ((pddl-predicate :name name2)
-	      (when (eq name name2)
-		(return-from per-action t)))))
-	 (precondition action))
-	nil)
+	(flet ((per-branch (branch cont)
+		 (match branch
+		   ((op _ preds) (funcall cont preds))
+		   ((pddl-predicate :name name2)
+		    (when (eq name name2)
+		      (return-from per-action t))))))
+	  (walk-tree #'per-branch (precondition action))
+	  (walk-tree #'per-branch (effect action))
+	  nil))
       (actions domain)))))
 
-@export
-(defun mutex-predicates (predicate)
-  (iter (for action in (related-actions predicate))
-	(appending (%mutex-predicate predicate action))))
+;; 以下、mutex検知
 
 @export
-(defun %mutex-predicate (predicate action)
-  (let ((candidate1 nil)
-	(candidate2 nil)
-	(all-effects (append (add-list action)
-			     (delete-list action))))
-    (flet ((push-candidates (pred mutex-candidate)
-	     (match pred
-	       ((pddl-predicate :parameters params)
-		(match mutex-candidate
-		  ((pddl-predicate
-		    :parameters
-		    (guard params2 (subsetp params2 params)))
-		   (push pred candidate1)
-		   (push mutex-candidate candidate2)))))))
-      (map-product
-       #'push-candidates
-       (remove-if-not (curry #'eqname predicate) (add-list action))
-       (remove-if     (curry #'eqname predicate) (add-list action)))
-      (map-product
-       #'push-candidates
-       (remove-if-not (curry #'eqname predicate) (delete-list action))
-       (remove-if     (curry #'eqname predicate) (delete-list action)))
+(defun mutex-predicates (domain)
+  (shrink-muteces
+   (categorize-muteces
+    (mappend #'muteces-in (actions domain)))))
 
-      (iter (for pred in candidate1)
-	    (for mutex in candidate2)
-	    (for indices = (get-mutex-argument-indices
-			    pred mutex))
-	    (when
-		(every
-		 ;; もし同じpredicateの削除効果があれば、
-		 ;; 対応したmutex開放もないといけない
-		 (lambda (pred2)
-		   (let ((mutex-arguments
-			  (mapcar (rcurry #'nth (parameters pred2))
-				  indices)))
-		     (some
-		      (lambda (mutex?)
-			(equalp (parameters mutex?) mutex-arguments))
-		      (remove-if-not (curry #'eqname mutex) all-effects))))
-		 (remove-if-not (curry #'eqname predicate) all-effects))
-	      (collect (list pred mutex)))))))
+@export
+(defun muteces-in (action)
+  (shrink-muteces
+   (categorize-muteces
+    (append (mutex-candidates-in (add-list action))
+	    (mutex-candidates-in (delete-list action))))))
 
-     
+
+@export
+(defun subset-effect-p (effect1 effect2)
+  (subsetp (parameters effect1)
+	   (parameters effect2)))
+
+@export
 (defun get-mutex-argument-indices (predicate mutex)
   (iter (for p in (parameters mutex))
 	(collect
 	    (position p (parameters predicate)))))
-		
+
 @export
-(defun movement-style-action-p (predicate action)
-  )
+(defun mutex-candidates-in (effects)
+  (if (> (length effects) 1)
+      (let (pairs)
+	(map-permutations
+	 (lambda (pair)
+	   (when (apply #'subset-effect-p pair)
+	     (destructuring-bind (mutex predicate) pair
+	       (push (reverse 
+		      (cons (get-mutex-argument-indices predicate mutex)
+			    pair)) pairs))))
+	 effects
+	 :length 2)
+	pairs)
+      effects))
 
+@export
+(defun categorize-muteces (candidates)
+  (let ((hash (make-hash-table :test #'equalp)))
+    (dolist (candidate candidates hash)
+      (match candidate
+	((list (pddl-predicate :name pred-name)
+	       (pddl-predicate :name mutex-name)
+	       _)
+	 (push candidate
+	       (gethash (cons pred-name mutex-name) hash)))))))
 
+@export
+(defun shrink-muteces (candidates-hash)
+  (let (muteces)
+    (maphash (lambda (key value)
+	       @ignore key
+	       (let ((shrinked (remove-duplicates
+				value
+				:test #'equalp
+				:key #'third)))
+		 (when (= 1 (length shrinked))
+		   (push (car shrinked) muteces))))
+	     candidates-hash)
+    muteces))
 
