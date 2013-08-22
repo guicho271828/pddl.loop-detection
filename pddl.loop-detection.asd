@@ -16,7 +16,7 @@
 	       (:module "src"
 		:depends-on (:package)
                 :components
-                ((:file :predicate-attribute)
+                ((:file :mutex)
 		 (:file :movement))))
   :description ""
   :long-description
@@ -32,3 +32,8 @@
           (setf (fill-pointer seq) (read-sequence seq stream))
           seq)))
   :in-order-to ((test-op (load-op pddl.loop-detection-test))))
+
+(defmethod asdf:perform ((op asdf:test-op)
+			 (system (eql (asdf:find-system :pddl.loop-detection))))
+  (funcall (find-symbol "RUN!" (find-package :fiveam)) :pddl)
+  t)

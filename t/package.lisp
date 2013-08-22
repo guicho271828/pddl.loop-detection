@@ -14,7 +14,7 @@
 	:pddl.scheduler
         :pddl.loop-detection
 	:pddl.plan-optimizer
-        :pddl-test
+        :pddl.instances
         :fiveam)
   (:shadow :place :maximize :minimize)
   (:shadowing-import-from :fiveam :fail))
