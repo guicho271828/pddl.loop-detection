@@ -26,6 +26,8 @@
 (defparameter schedule
   (reschedule cell-assembly-model2a-2-9 :minimum-slack))
 
+(defvar movements)
+
 ;; 輸送型のアクションを検出できれば - 場所がわかるかも。
 ;; 
 ;; どうやら、ベースごとのアクション列は同じみたいだ。(n=2の場合。)
@@ -45,12 +47,23 @@
 
 (test extract-movements
   (finishes
-    (shrink-movements                ; (fact*)* --> (fact*)*
-     (extract-movement               ; (object,schedule,domain) --> (fact*)*
-      'b-0                           ; pddl-object/symbol
-      (reschedule                    ; (plan, algorithm) --> schedule
-       cell-assembly-model2a-2-9     ; pddl-plan (model2a, 2 bases)
-       :minimum-slack)               ; (eql :minimum-slack)
-      cell-assembly))                ; pddl-domain
+   (setf movements
+	 (shrink-movements                ; (fact*)* --> (fact*)*
+	  (extract-movements               ; (object,schedule,domain) --> (fact*)*
+	   'b-0                           ; pddl-object/symbol
+	   (reschedule                    ; (plan, algorithm) --> schedule
+	    cell-assembly-model2a-2-9     ; pddl-plan (model2a, 2 bases)
+	    :minimum-slack)               ; (eql :minimum-slack)
+	   cell-assembly)))                ; pddl-domain
   ))
+
+(test (steady-states :depends-on extract-movements)
+  (let ((movements (nthcdr 10 movements)))
+    (dolist (ss (exploit-steady-state movements))
+      (when (>= (length ss) 2)
+	(map-combinations
+	 (lambda (list)
+	   (is (null (intersection (first list) (second list)))))
+	 (mapcar (rcurry #'nth movements) ss)
+	 :length 2)))))
 

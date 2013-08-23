@@ -17,7 +17,8 @@
 		:depends-on (:package)
                 :components
                 ((:file :mutex)
-		 (:file :movement))))
+		 (:file :movement)
+		 (:file :steady-state))))
   :description ""
   :long-description
   #.(with-open-file (stream (merge-pathnames
