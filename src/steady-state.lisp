@@ -41,16 +41,5 @@
 			  :test #'eqstate))
       (list (cons i base-positions))
       nil))
-
-@export
-(defun shrink-steady-state (steady-states)
-  "this is wrong because it removes the more spacious distributions of mutices."
-  (let (acc)
-    (dolist (ss steady-states acc)
-      (unless (some (curry #'subsetp ss) acc)
-	(setf acc
-	      (if (some (rcurry #'subsetp ss) acc)
-		  (cons ss (remove-if (rcurry #'subsetp ss) acc))
-		  (cons ss acc)))))))
       
 	
