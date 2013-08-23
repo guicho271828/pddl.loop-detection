@@ -85,30 +85,34 @@ represent resources being released."
   (iter (for p in (parameters mutex))
 	(collect (position p (parameters predicate)))))
 
+(defun %matches-to-owner-p (owner pred)
+  (and (eqname pred owner)
+       (every #'pddl-supertype-p
+	      (mapcar #'type (parameters pred))
+	      (mapcar #'type (parameters owner)))))
+
+(defun %matches-to-mutex-p (mutex indices true-owner pred)
+  (and (eqname pred mutex)
+       (every #'pddl-supertype-p
+	      (mapcar #'type (parameters pred))
+	      (mapcar #'type (parameters mutex)))
+       (every
+	(lambda (param index)
+	  (eq param (nth index (parameters true-owner))))
+	(parameters pred)
+	indices)))
+
 (defun %validate-mutex (mutex checked-against)
   (ematch mutex
     ((or (list owner mutex indices kind)
 	 (list owner mutex indices kind :validated))
      (if (every
 	  (lambda (true-owner)
-	    (some
-	     (lambda (pred)
-	       (and (eqname pred mutex)
-		    (every #'pddl-supertype-p
-		    	   (mapcar #'type (parameters pred))
-		    	   (mapcar #'type (parameters mutex)))
-		    (every
-		     (lambda (param index)
-		       (eq param (nth index (parameters true-owner))))
-		     (parameters pred)
-		     indices)))
-	     checked-against))
+	    (some (curry #'%matches-to-mutex-p
+			 mutex indices true-owner)
+		  checked-against))
 	  (remove-if-not
-	   (lambda (pred)
-	     (and (eqname pred owner)
-		  (every #'pddl-supertype-p
-		  	 (mapcar #'type (parameters pred))
-		  	 (mapcar #'type (parameters owner)))))
+	   (curry #'%matches-to-owner-p owner)
 	   checked-against))
 	 (list owner mutex indices kind :validated)
 	 (list owner mutex indices kind :infeasible)))
@@ -122,23 +126,11 @@ represent resources being released."
      (if (every
 	  (lambda (true-owner)
 	    (some
-	     (lambda (pred)
-	       (and (eqname pred mutex)
-		    (every #'pddl-supertype-p
-		    	   (mapcar #'type (parameters pred))
-		    	   (mapcar #'type (parameters mutex)))
-		    (every
-		     (lambda (param index)
-		       (eq param (nth index (parameters true-owner))))
-		     (parameters pred)
-		     indices)))
+	     (curry #'%matches-to-mutex-p
+		    mutex indices true-owner)
 	     ~checked-against))
 	  (remove-if-not
-	   (lambda (pred)
-	     (and (eqname pred owner)
-		  (every #'pddl-supertype-p
-		  	 (mapcar #'type (parameters pred))
-		  	 (mapcar #'type (parameters owner)))))
+	   (curry #'%matches-to-owner-p owner)
 	   checked-against))
 	 (list owner mutex indices kind :validated)
 	 (list owner mutex indices kind :infeasible)))
@@ -155,6 +147,7 @@ represent resources being released."
 	((list* owner mutex indices kind _)
 	 (push candidate
 	       (gethash (list (name owner)
+			      (mapcar #'type (parameters owner))
 			      (name mutex)
 			      indices kind) hash)))))))
 

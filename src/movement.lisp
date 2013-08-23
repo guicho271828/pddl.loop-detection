@@ -24,3 +24,41 @@ its precondition or the effect."
 (defmethod related-to (designator (ta timed-action))
   (related-to designator (timed-action-action ta)))
 
+@export
+(defun acquire-or-release-mutex-p (mutex action)
+  (match mutex
+    ((list* owner _)
+     (or (some (curry #'%matches-to-owner-p owner)
+	       (add-list action))
+	 (some (curry #'%matches-to-owner-p owner)
+	       (delete-list action))))))
+
+@export
+(defun extract-movements (object schedule domain)
+  (mapcar (compose
+	   (let ((owners (mapcar #'first (mutex-predicates domain))))
+	     (lambda (states)
+	       (remove-if-not
+	   	(lambda (atomic-state)
+		  (some
+		   (rcurry #'%matches-to-owner-p atomic-state)
+		   owners))
+	   	states)))
+	   (lambda (ta)
+	     (match ta
+	       ((timed-action
+		 :end (timed-state :state states))
+		(remove-if-not (curry #'related-to object)
+			       states)))))
+	  (remove-if-not (curry #'related-to object)
+			 schedule)))
+
+@export
+(defun shrink-movements (movements)
+  (iter (for states in movements)
+	(for pstates previous states)
+	(unless pstates
+	  (next-iteration))
+	(unless (or (set-equal states pstates)
+		    (null states))
+	  (collect states))))

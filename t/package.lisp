@@ -43,3 +43,14 @@
 	     (filter-schedule schedule :objects '(b-1)))))
 
 
+(test extract-movements
+  (finishes
+    (shrink-movements                ; (fact*)* --> (fact*)*
+     (extract-movement               ; (object,schedule,domain) --> (fact*)*
+      'b-0                           ; pddl-object/symbol
+      (reschedule                    ; (plan, algorithm) --> schedule
+       cell-assembly-model2a-2-9     ; pddl-plan (model2a, 2 bases)
+       :minimum-slack)               ; (eql :minimum-slack)
+      cell-assembly))                ; pddl-domain
+  ))
+
