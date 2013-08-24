@@ -26,8 +26,6 @@
 (defparameter schedule
   (reschedule cell-assembly-model2a-2-9 :minimum-slack))
 
-(defvar movements)
-
 ;; 輸送型のアクションを検出できれば - 場所がわかるかも。
 ;; 
 ;; どうやら、ベースごとのアクション列は同じみたいだ。(n=2の場合。)
@@ -44,18 +42,33 @@
 	     (filter-schedule schedule :objects '(b-0))
 	     (filter-schedule schedule :objects '(b-1)))))
 
+(defvar movements
+  (shrink-movements                ; (fact*)* --> (fact*)*
+   (extract-movements               ; (object,schedule,domain) --> (fact*)*
+    'b-0                           ; pddl-object/symbol
+    (reschedule                    ; (plan, algorithm) --> schedule
+     cell-assembly-model2a-2-9     ; pddl-plan (model2a, 2 bases)
+     :minimum-slack)               ; (eql :minimum-slack)
+    cell-assembly)))                    ; pddl-domain
+
+(defvar movements2
+  (nthcdr 15 movements))
 
 (test extract-movements
   (finishes
-   (setf movements
-	 (shrink-movements                ; (fact*)* --> (fact*)*
-	  (extract-movements               ; (object,schedule,domain) --> (fact*)*
-	   'b-0                           ; pddl-object/symbol
-	   (reschedule                    ; (plan, algorithm) --> schedule
-	    cell-assembly-model2a-2-9     ; pddl-plan (model2a, 2 bases)
-	    :minimum-slack)               ; (eql :minimum-slack)
-	   cell-assembly)))                ; pddl-domain
+    (shrink-movements                ; (fact*)* --> (fact*)*
+       (extract-movements               ; (object,schedule,domain) --> (fact*)*
+	'b-0                           ; pddl-object/symbol
+	(reschedule                    ; (plan, algorithm) --> schedule
+	 cell-assembly-model2a-2-9     ; pddl-plan (model2a, 2 bases)
+	 :minimum-slack)               ; (eql :minimum-slack)
+	cell-assembly))
   ))
+
+(defvar steady-states
+  (exploit-steady-state movements))
+(defvar steady-states2
+  (exploit-steady-state movements2))
 
 (test (steady-states :depends-on extract-movements)
   (let ((movements (nthcdr 10 movements)))
