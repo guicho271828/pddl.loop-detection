@@ -25,10 +25,9 @@
 (defmethod cost ((tr transition))
   1)
 (defmethod heuristic-cost-between ((n1 state-node) (n2 state-node))
-  (- (length (current-state n1))
-     (iter (for pos1 in (current-state n1))
-	   (for pos2 in (current-state n2))
-	   (counting (= pos1 pos2)))))
+  (iter (for pos1 in (current-state n1))
+	(for pos2 in (current-state n2))
+	(summing (- pos2 pos1))))
 
 @export
 (defun search-loop-path (movements steady-state)
