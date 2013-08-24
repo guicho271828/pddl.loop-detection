@@ -9,18 +9,24 @@
 @export
 (defun exploit-steady-state (movements)
   (let ((max (length movements)))
-    (remove-duplicates
-     (mapcon
-      (lambda (rest)
-	(%exploit-rec rest
-		      nil
-		      nil
-		      (- max (length rest))))
-      movements)
-     :test (lambda (a b)
-	     (or (equalp a b)
-		 (equalp (make-eol a max)
-			 (make-eol b max)))))))
+    (let ((unshrinked (mapcon
+		       (lambda (rest)
+			 (%exploit-rec rest
+				       nil
+				       nil
+				       (- max (length rest))))
+		       movements))
+	  (v (make-array max :initial-element nil)))
+      (iter (for ss in unshrinked)
+	    (push ss (aref v (length ss))))
+      (iter (for bucket in-vector v)
+	    (appending
+	     (remove-duplicates
+	      bucket
+	      :test (lambda (a b)
+		      (or (equalp a b)
+			  (equalp (make-eol a max)
+				  (make-eol b max))))))))))
 
 (defun %exploit-rec (movements used-mutices base-positions i)
   ;(break+ used-mutices (car movements))
