@@ -18,7 +18,8 @@
                 :components
                 ((:file :mutex)
 		 (:file :movement)
-		 (:file :steady-state))))
+		 (:file :steady-state)
+		 (:file :simulator))))
   :description ""
   :long-description
   #.(with-open-file (stream (merge-pathnames
