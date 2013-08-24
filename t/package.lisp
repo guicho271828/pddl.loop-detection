@@ -83,7 +83,7 @@
 	 :length 2)))))
 
 (test (search-loop-path)
-  (search-loop-path movements2 (car steady-states2)))
+  (time (search-loop-path movements (nth 100 steady-states))))
 
 (test (loopable-steady-states :depends-on search-loop-path)
   (loopable-steady-states movements2))
