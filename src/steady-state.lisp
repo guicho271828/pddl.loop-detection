@@ -18,7 +18,7 @@
 		       movements))
 	  (v (make-array max :initial-element nil)))
       (iter (for ss in unshrinked)
-	    (push ss (aref v (length ss))))
+	    (push ss (aref v (1- (length ss)))))
       (iter (for bucket in-vector v)
 	    (appending
 	     (remove-duplicates
