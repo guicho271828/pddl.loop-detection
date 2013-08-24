@@ -84,6 +84,18 @@
 
 @export
 (defun loopable-steady-states (movements)
-  (remove-if-not
-   (curry #'search-loop-path movements)
-   (exploit-steady-state movements)))
+  "Returns the list of solution path from start-of-loop to end-of-loop.
+start-of-loop is always the same list to the steady-state in the
+meaning of EQUALP."
+
+  (iter (for ss in (exploit-steady-state movements))
+	(if-let ((duplicated (some
+			      (lambda (path)
+				(member ss path))
+			      loops)))
+	  (format t "~w is not searched because
+it had appeard in the transitional states in the other loop scheme ~w."
+		  ss duplicated)
+	  (when-let ((result (search-loop-path movements ss)))
+	    (collect result into loops)))
+	(finally (return loops))))
