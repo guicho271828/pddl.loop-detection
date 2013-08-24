@@ -25,7 +25,10 @@
 (defmethod cost ((tr transition))
   1)
 (defmethod heuristic-cost-between ((n1 state-node) (n2 state-node))
-  0)
+  (- (length (current-state n1))
+     (iter (for pos1 in (current-state n1))
+	   (for pos2 in (current-state n2))
+	   (counting (= pos1 pos2)))))
 
 @export
 (defun search-loop-path (movements steady-state)
@@ -40,7 +43,8 @@
 		 (make-instance
 		  'state-node
 		  :movements movements
-		  :current-state (make-eol steady-state)))))
+		  :current-state (make-eol steady-state
+					   (length movements))))))
       (iter (for node first last then (parent node))
 	    (while node)
 	    (collect (current-state node) at beginning)))))
@@ -62,13 +66,24 @@
 	  :current-state (substitute (1+ n) n current-state)))
        (remove-if-not
 	(lambda (n)
-	  (and (< n max)
-	       (null
-		(intersection
-		 (if (= max (1+ n))
-		     nil
-		     (nth (1+ n) movements))
-		 (set-difference used (nth n movements))))))
+	  (let ((n2 (1+ n)))
+	    (and
+	     ;; n=max iff n is carry-out. 
+	     (< n max)
+	     ;; carry-out is ignored
+	     (not (member n2 current-state))
+	     ;; if the next place is carry-out, it does not
+	     ;; consume any resource
+	     (if (= max n2)
+		 t
+		 (null
+		  (intersection
+		   (nth n2 movements)
+		   (set-difference used (nth n movements))))))))
 	current-state)))))
 
-(mapcar (curry #'search-loop-path movements2) steady-state2)
+@export
+(defun loopable-steady-states (movements)
+  (remove-if-not
+   (curry #'search-loop-path movements)
+   (exploit-steady-state movements)))
