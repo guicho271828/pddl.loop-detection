@@ -95,20 +95,27 @@
 		   (set-difference used (nth n movements))))))))
 	current-state)))))
 
+(defun %report-duplication (ss duplicated)
+  @ignore duplicated
+  (format t "~%~w is not searched because it had appeared in the other loop." ss))
+
+(defun %check-duplicate (ss loops)
+
+  (some
+   (lambda (path)
+     (member ss path :test #'equalp))
+   (aref loops (length ss))))
+
 @export
 (defun loopable-steady-states (movements)
   "Returns the list of solution path from start-of-loop to end-of-loop.
 start-of-loop is always the same list to the steady-state in the
 meaning of EQUALP."
 
-  (iter (for ss in (reverse (exploit-steady-state movements)))
-	(if-let ((duplicated (some
-			      (lambda (path)
-				(member ss path :test #'equalp))
-			      loops)))
-	  (format t "~w is not searched because
-it had appeard in the transitional states in the other loop scheme ~w."
-		  ss duplicated)
+  (iter (with loops = (make-array (length movements) :initial-element nil))
+	(for ss in (exploit-steady-state movements))
+	(if-let ((duplicated (%check-duplicate ss loops)))
+	  (%report-duplication ss duplicated)
 	  (when-let ((result (search-loop-path movements ss)))
-	    (collect result into loops)))
+	    (push result (aref loops (length ss)))))
 	(finally (return loops))))
