@@ -85,5 +85,13 @@
 (test (search-loop-path)
   (time (search-loop-path movements (nth 100 steady-states))))
 
+(defun test-interactively ()
+  (let ((i 0))
+    (do-restart ((next (lambda ()
+			 (incf i))))
+      (print (nth i steady-states))
+      (time (search-loop-path movements (nth i steady-states)))
+      (error "what to do next?"))))
+
 (test (loopable-steady-states :depends-on search-loop-path)
   (loopable-steady-states movements2))

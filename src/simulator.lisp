@@ -7,11 +7,25 @@
    (movements :initarg :movements :reader movements)
    (complementary-edge-class :initform 'transition)))
 
+(defvar *movements-hash*
+  (make-hash-table :test #'equalp))
+(defmethod allocate-instance :around
+    ((class (eql (find-class 'state-node)))
+     &key movements current-state)
+  (let ((state-hash
+	 (or (gethash movements *movements-hash*)
+	     (setf (gethash movements *movements-hash*)
+		   (make-hash-table :test #'equalp)))))
+    ;; (when (gethash current-state state-hash)
+    ;;   (format t "allocation stopped!"))
+    (or (gethash current-state state-hash)
+	(setf (gethash current-state state-hash)
+	      (call-next-method)))))
 
 (defmethod print-object ((n state-node) s)
   (print-unreadable-object (n s :type t)
     (with-slots (current-state) n
-      (format s "~w" current-state))))
+      (format s "( ~{~3@<~a ~>~})" current-state))))
 
 
 @export
@@ -48,21 +62,21 @@
 	    (while node)
 	    (collect (current-state node) at beginning)))))
 
+(defun %make-state-node (movements current-state n)
+  (make-instance
+   'state-node
+   :movements movements
+   :current-state (substitute (1+ n) n current-state)))
 
 (defmethod generate-nodes ((state state-node))
   (with-slots (movements current-state) state
-    
     ;; movements: (mutex*)*
     ;; current: number*
     (let ((max (length movements))
 	  (used (mappend (rcurry #'nth movements) current-state)))
       ;; used: mutices currently in use
       (mapcar
-       (lambda (n)
-	 (make-instance
-	  'state-node
-	  :movements movements
-	  :current-state (substitute (1+ n) n current-state)))
+       (curry #'%make-state-node movements current-state)
        (remove-if-not
 	(lambda (n)
 	  (let ((n2 (1+ n)))
@@ -87,10 +101,10 @@
 start-of-loop is always the same list to the steady-state in the
 meaning of EQUALP."
 
-  (iter (for ss in (exploit-steady-state movements))
+  (iter (for ss in (reverse (exploit-steady-state movements)))
 	(if-let ((duplicated (some
 			      (lambda (path)
-				(member ss path))
+				(member ss path :test #'equalp))
 			      loops)))
 	  (format t "~w is not searched because
 it had appeard in the transitional states in the other loop scheme ~w."
