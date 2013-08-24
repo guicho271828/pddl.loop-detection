@@ -2,17 +2,25 @@
 (use-syntax :annot)
 
 @export
+(defun make-eol (steady-state length)
+  "make the end-of-loop state"
+  `(,@(cdr steady-state) ,length))
+
+@export
 (defun exploit-steady-state (movements)
-  (remove-duplicates
-   (mapcon
-    (lambda (rest)
-      (%exploit-rec rest
-		    nil
-		    nil
-		    (- (length movements)
-		       (length rest))))
-    movements)
-   :test #'equalp))
+  (let ((max (length movements)))
+    (remove-duplicates
+     (mapcon
+      (lambda (rest)
+	(%exploit-rec rest
+		      nil
+		      nil
+		      (- max (length rest))))
+      movements)
+     :test (lambda (a b)
+	     (or (equalp a b)
+		 (equalp (make-eol a max)
+			 (make-eol b max)))))))
 
 (defun %exploit-rec (movements used-mutices base-positions i)
   ;(break+ used-mutices (car movements))
