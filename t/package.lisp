@@ -6,6 +6,7 @@
 (defpackage pddl.loop-detection-test
   (:use :cl
 	:guicho-utilities
+	:guicho-a*
 	:iterate
 	:alexandria
 	:optima
@@ -17,6 +18,7 @@
         :pddl.instances
         :fiveam)
   (:shadow :place :maximize :minimize)
+  (:shadowing-import-from :guicho-a* :cost)
   (:shadowing-import-from :fiveam :fail))
 (in-package :pddl.loop-detection-test)
 

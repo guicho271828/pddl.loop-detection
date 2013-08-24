@@ -6,6 +6,7 @@
 (defpackage pddl.loop-detection
   (:use :cl
 	:guicho-utilities
+	:guicho-a*
 	:iterate
 	:optima
 	:cl-syntax
@@ -13,6 +14,8 @@
 	:pddl.scheduler
 	:pddl.plan-optimizer
 	:alexandria)
+  (:shadowing-import-from
+   :guicho-a* :cost)            ;resolve conflict with pddl:cost
   (:shadowing-import-from
    :iterate :minimize :maximize))
 (in-package :pddl.loop-detection)
