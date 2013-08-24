@@ -39,7 +39,8 @@
 (defun %exploit-leaf (this used-mutices base-positions i)
   (if (null (intersection this used-mutices
 			  :test #'eqstate))
-      (list (cons i base-positions))
+      (list (reverse
+	     (cons i base-positions)))
       nil))
       
 	
