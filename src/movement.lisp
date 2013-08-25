@@ -35,30 +35,48 @@ its precondition or the effect."
 
 @export
 (defun extract-movements (object schedule domain)
-  (mapcar (compose
-	   (let ((owners (mapcar #'first (mutex-predicates domain))))
-	     (lambda (states)
-	       (remove-if-not
-	   	(lambda (atomic-state)
-		  (some
-		   (rcurry #'%matches-to-owner-p atomic-state)
-		   owners))
-	   	states)))
-	   (lambda (ta)
-	     (match ta
-	       ((timed-action
-		 :end (timed-state :state states))
-		(remove-if-not (curry #'related-to object)
-			       states)))))
-	  (remove-if-not (curry #'related-to object)
-			 schedule)))
+  (let (related indices)
+    (multiple-value-setq
+	(related indices)
+      (iter (for ta in schedule)
+	    (for i from 0)
+	    (when (related-to object ta)
+	      (collect ta into related)
+	      (collect i into indices))
+	    (finally (return (values related indices)))))
+
+    (values
+     (mapcar (compose
+	      (let ((owners (mapcar #'first (mutex-predicates domain))))
+		(lambda (states)
+		  (remove-if-not
+		   (lambda (atomic-state)
+		     (some
+		      (rcurry #'%matches-to-owner-p atomic-state)
+		      owners))
+		   states)))
+	      (lambda (ta)
+		(match ta
+		  ((timed-action
+		    :end (timed-state :state states))
+		   (remove-if-not (curry #'related-to object)
+				  states)))))
+	     related)
+     indices)))
 
 @export
-(defun shrink-movements (movements)
+(defun shrink-movements (movements indices)
   (iter (for states in movements)
+	(for i in indices)
 	(for pstates previous states)
+	(for previ previous i)
 	(unless pstates
 	  (next-iteration))
-	(unless (or (set-equal states pstates)
+	(unless (or (set-equal states pstates :test #'eqstate)
 		    (null states))
-	  (collect states))))
+	  (collect states into shrinked-states)
+	  (collect previ into shrinked-state-indices))
+	(finally
+	 (return (values
+		  shrinked-states
+		  shrinked-state-indices)))))

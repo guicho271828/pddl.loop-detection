@@ -146,4 +146,6 @@ meaning of EQUALP."
 	 (format t "~%valid loops in total --- ~a/~a" total-count i)
 	 ;; (format t "~%these loops were invalid:~%~w" invalid-loops)
 	 
-	 (return (values loops invalid-loops)))))
+	 (return
+	   (values (reduce #'append loops)
+		   invalid-loops)))))

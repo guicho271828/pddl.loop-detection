@@ -1,26 +1,32 @@
 (in-package :pddl.loop-detection)
 (use-syntax :annot)
 
-(defun movement-transition-cost (schedule movement1 movement2)
-  (iter (with start-time = nil)
-	(for ta in schedule)
-	(match ta
-	  ((timed-action
-	    (end (timed-state time state)))
-	   (cond
-	     ((null start-time)
-	      (when (subsetp movement1 state)
-		(setf start-time time)))
-	     (t
-	      (when (subsetp movement2 state)
-		(return-from movement-transition-cost
-		  (- time start-time)))))))))
+@export
+(defun movement-transition-cost (schedule index1 index2)
+  (- (timed-state-time (timed-action-start (nth index2 schedule)))
+     (timed-state-time (timed-action-start (nth index1 schedule)))))
 
+;; loops is (list plan*)
 
-(defun loop-heuristic-cost (schedule movements loop-plan)
-  (iter (for ta in schedule)
-	(member (timed-state-state
-	 (timed-action-end ta))
+@export
+(defun loop-heuristic-cost (schedule movements-indices loop-plan)
+  "SCHEDULE must be a fundamental-schedule (which only processes ONE base).
+DO NOT use shrinked MOVEMENTS-INDICES. It will cause an error."
+  (iter (for state in loop-plan)
+	(for pstate previous state)
+	(unless pstate (next-iteration))
+	(for diff = (set-difference state pstate))
+	(assert (= 1 (length diff)))
+	(for changed = (car diff))
+	(assert (plusp changed))
+	(summing
+	 (movement-transition-cost
+	  schedule
+	  (nth (1- changed) movements-indices)
+	  (nth changed movements-indices)))))
 
-(mapcar (compose #'timed-state-state
-		 #'timed-action-end) schedule)
+@export
+(defun sort-loops (loops schedule movements-indices)
+  (sort loops #'< :key (curry #'loop-heuristic-cost
+			      schedule movements-indices)))
+  

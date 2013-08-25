@@ -26,7 +26,9 @@
 (in-suite :pddl.loop-detection)
 
 (defparameter schedule
-  (reschedule cell-assembly-model2a-2-9 :minimum-slack))
+  (reschedule
+     cell-assembly-model2a-1-6
+     :minimum-slack))
 
 ;; 輸送型のアクションを検出できれば - 場所がわかるかも。
 ;; 
@@ -44,17 +46,24 @@
 	     (filter-schedule schedule :objects '(b-0))
 	     (filter-schedule schedule :objects '(b-1)))))
 
-(defvar movements
-  (shrink-movements                ; (fact*)* --> (fact*)*
-   (extract-movements               ; (object,schedule,domain) --> (fact*)*
-    'b-0                           ; pddl-object/symbol
-    (reschedule                    ; (plan, algorithm) --> schedule
-     cell-assembly-model2a-2-9     ; pddl-plan (model2a, 2 bases)
-     :minimum-slack)               ; (eql :minimum-slack)
-    cell-assembly)))                    ; pddl-domain
+(defvar movements)
+(defvar movements-indices)
 
-(defvar movements2
-  (nthcdr 15 movements))
+(multiple-value-setq
+    (movements movements-indices)
+  (extract-movements 'b-0 schedule cell-assembly))
+
+(defvar movements-shrinked)
+(defvar movements-indices-shrinked)
+
+(multiple-value-setq
+    (movements-shrinked movements-indices-shrinked)
+  (shrink-movements movements movements-indices))
+
+(defvar movements-shrinked2
+  (nthcdr 10 movements-shrinked))
+(defvar movements-indices-shrinked2
+  (nthcdr 10 movements-indices-shrinked))
 
 (test extract-movements
   (finishes
@@ -68,12 +77,12 @@
   ))
 
 (defvar steady-states
-  (exploit-steady-state movements))
+  (exploit-steady-state movements-shrinked))
 (defvar steady-states2
-  (exploit-steady-state movements2))
+  (exploit-steady-state movements-shrinked2))
 
 (test (steady-states :depends-on extract-movements)
-  (let ((movements (nthcdr 10 movements)))
+  (let ((movements movements-shrinked2))
     (dolist (ss (exploit-steady-state movements))
       (when (>= (length ss) 2)
 	(map-combinations
@@ -83,15 +92,18 @@
 	 :length 2)))))
 
 (test (search-loop-path)
-  (time (search-loop-path movements (lastcar steady-states))))
+  (time (search-loop-path movements-shrinked
+			  (lastcar steady-states))))
 
 (defun test-interactively ()
   (let ((i 0))
     (do-restart ((next (lambda ()
 			 (incf i))))
       (print (nth i steady-states))
-      (time (search-loop-path movements (nth i steady-states)))
+      (time (search-loop-path movements-shrinked (nth i steady-states)))
       (error "what to do next?"))))
 
 (test (loopable-steady-states :depends-on search-loop-path)
-  (time (loopable-steady-states movements2)))
+  (time (loopable-steady-states movements-shrinked2)))
+
+
