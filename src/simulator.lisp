@@ -68,9 +68,10 @@
 	    (while node)
 	    (collect (current-state node) at beginning)))))
 
-(defun %make-state-node (movements current-state n)
+(defun %make-state-node (movements current-state goal n)
   (make-instance
    'state-node
+   :goal goal
    :movements movements
    :current-state (substitute (1+ n) n current-state)))
 
@@ -78,27 +79,27 @@
   (with-slots (movements current-state) state
     ;; movements: (mutex*)*
     ;; current: number*
-    (let ((max (length movements))
-	  (used (mappend (rcurry #'nth movements) current-state)))
+    (let* ((max (length movements))
+	   (goal (goal state))
+	   (goal-state (current-state goal))
+	   (used (mappend (rcurry #'nth movements) current-state)))
       ;; used: mutices currently in use
       (mapcar
-       (curry #'%make-state-node movements current-state)
-       (remove-if-not
-	(lambda (n)
-	  (let ((n2 (1+ n)))
-	    (and
-	     (< n max)  		; n=max iff n is carry-out. 
-	     (not (member n2 current-state))
-					; carry-out is ignored
-	     ;; if the next place is carry-out, it does not
-	     ;; consume any resource
-	     (if (= max n2)
-		 t
-		 (null
-		  (intersection
-		   (nth n2 movements)
-		   (set-difference used (nth n movements))))))))
-	current-state)))))
+       (curry #'%make-state-node movements current-state goal)
+       (iter (for n in current-state)
+	     (for goal-n in goal-state)
+	     (for n2 = (1+ n))
+	     (when (and ; include n if
+		    (not (= n goal-n)) ; n is not achieved yet
+		    (< n max) ; n+1 is not carry-out.
+		    (not (member n2 current-state)) ; n+1 is unoccupied
+		    (if (= max n2) ; if n+1 is carry-out
+			t          ; always ok, no consumption of resource
+			(null      ; else, the resource constraint should be kept
+			 (intersection
+			  (nth n2 movements)
+			  (set-difference used (nth n movements))))))
+	       (collect n)))))))
 
 (defun %report-duplication (ss duplicated)
   @ignore duplicated
