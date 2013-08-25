@@ -4,6 +4,7 @@
 @export
 (defclass state-node (searchable-node)
   ((current-state :initarg :current-state :reader current-state)
+   (goal :initarg :goal :accessor goal)
    (movements :initarg :movements :reader movements)
    (complementary-edge-class :initform 'transition)))
 
@@ -11,16 +12,18 @@
   (make-hash-table :test #'equalp))
 (defmethod allocate-instance :around
     ((class (eql (find-class 'state-node)))
-     &key movements current-state)
+     &key movements current-state goal)
   (let ((state-hash
 	 (or (gethash movements *movements-hash*)
 	     (setf (gethash movements *movements-hash*)
 		   (make-hash-table :test #'equalp)))))
     ;; (when (gethash current-state state-hash)
     ;;   (format t "allocation stopped!"))
-    (or (gethash current-state state-hash)
-	(setf (gethash current-state state-hash)
-	      (call-next-method)))))
+    (if-let ((found (gethash current-state state-hash)))
+      (progn (setf (goal found) goal)
+	     found)
+      (setf (gethash current-state state-hash)
+	    (call-next-method)))))
 
 (defmethod print-object ((n state-node) s)
   (print-unreadable-object (n s :type t)
@@ -43,28 +46,35 @@
 	(for pos2 in (current-state n2))
 	(summing (abs (- pos2 pos1)))))
 
+(defmethod constraint-ordering-op ((n state-node))
+  0) ;; it was found to have no effect if any.
+
 @export
 (defun search-loop-path (movements steady-state)
+  (remhash movements *movements-hash*)
   (handler-return ((path-not-found (lambda (c)
 				     @ignore c
 				     nil)))
-    (let ((last (a*-search
-		 (make-instance
-		  'state-node
-		  :movements movements
-		  :current-state steady-state)
-		 (make-instance
+    (let* ((goal (make-instance
 		  'state-node
 		  :movements movements
 		  :current-state (make-eol steady-state
-					   (length movements))))))
-      (iter (for node first last then (parent node))
-	    (while node)
-	    (collect (current-state node) at beginning)))))
+					   (length movements))))
+	   (start (make-instance
+		   'state-node
+		   :movements movements
+		   :goal goal
+		   :current-state steady-state)))
+      (setf (goal goal) goal)
+      (let ((last (a*-search start goal)))
+	(iter (for node first last then (parent node))
+	      (while node)
+	      (collect (current-state node) at beginning))))))
 
-(defun %make-state-node (movements current-state n)
+(defun %make-state-node (movements current-state goal n)
   (make-instance
    'state-node
+   :goal goal
    :movements movements
    :current-state (substitute (1+ n) n current-state)))
 
@@ -72,39 +82,40 @@
   (with-slots (movements current-state) state
     ;; movements: (mutex*)*
     ;; current: number*
-    (let ((max (length movements))
-	  (used (mappend (rcurry #'nth movements) current-state)))
+    (let* ((max (length movements))
+	   (goal (goal state))
+	   (goal-state (current-state goal))
+	   (used (mappend (rcurry #'nth movements) current-state)))
       ;; used: mutices currently in use
       (mapcar
-       (curry #'%make-state-node movements current-state)
-       (remove-if-not
-	(lambda (n)
-	  (let ((n2 (1+ n)))
-	    (and
-	     ;; n=max iff n is carry-out. 
-	     (< n max)
-	     ;; carry-out is ignored
-	     (not (member n2 current-state))
-	     ;; if the next place is carry-out, it does not
-	     ;; consume any resource
-	     (if (= max n2)
-		 t
-		 (null
-		  (intersection
-		   (nth n2 movements)
-		   (set-difference used (nth n movements))))))))
-	current-state)))))
+       (curry #'%make-state-node movements current-state goal)
+       (iter (for n in current-state)
+	     (for goal-n in goal-state)
+	     (for n2 = (1+ n))
+	     (when (and ; include n if
+		    (not (= n goal-n)) ; n is not achieved yet
+		    (< n max) ; n+1 is not carry-out.
+		    (not (member n2 current-state)) ; n+1 is unoccupied
+		    (if (= max n2) ; if n+1 is carry-out
+			t          ; always ok, no consumption of resource
+			(null      ; else, the resource constraint should be kept
+			 (intersection
+			  (nth n2 movements)
+			  (set-difference used (nth n movements)
+					  :test #'eqstate)
+			  :test #'eqstate))))
+	       (collect n)))))))
 
 (defun %report-duplication (ss duplicated)
   @ignore duplicated
-  (format t "~%~w is not searched because it had appeared in the other loop." ss))
+  (format t "~w is not searched because it had appeared in the other loop." ss))
 
 (defun %check-duplicate (ss loops)
 
   (some
    (lambda (path)
      (member ss path :test #'equalp))
-   (aref loops (length ss))))
+   (aref loops (1- (length ss)))))
 
 @export
 (defun loopable-steady-states (movements)
@@ -114,11 +125,23 @@ meaning of EQUALP."
   (iter (with loops = (make-array (length movements) :initial-element nil))
 	(with steady-states = (exploit-steady-state movements))
 	(with max = (length steady-states))
+	(with duplicated-count = 0)
+	(with total-count = 0)
 	(for i from 0)
 	(for ss in steady-states)
 	(format t "~%~a/~a: " i max)
 	(if-let ((duplicated (%check-duplicate ss loops)))
-	  (%report-duplication ss duplicated)
-	  (when-let ((result (search-loop-path movements ss)))
-	    (push result (aref loops (1- (length ss))))))
-	(finally (return loops))))
+	  (progn
+	    (incf duplicated-count)
+	    (incf total-count)
+	    (%report-duplication ss duplicated))
+	  (if-let ((result (search-loop-path movements ss)))
+	    (progn (incf total-count)
+		   (push result (aref loops (1- (length ss)))))
+	    (collect ss into invalid-loops)))
+	(finally
+	 (format t "~%duplicated loops detected --- ~a/~a" duplicated-count i)
+	 (format t "~%valid loops in total --- ~a/~a" total-count i)
+	 ;; (format t "~%these loops were invalid:~%~w" invalid-loops)
+	 
+	 (return (values loops invalid-loops)))))
