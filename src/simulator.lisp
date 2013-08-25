@@ -41,7 +41,7 @@
 (defmethod heuristic-cost-between ((n1 state-node) (n2 state-node))
   (iter (for pos1 in (current-state n1))
 	(for pos2 in (current-state n2))
-	(summing (- pos2 pos1))))
+	(summing (abs (- pos2 pos1)))))
 
 @export
 (defun search-loop-path (movements steady-state)
