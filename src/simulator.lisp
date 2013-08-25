@@ -138,7 +138,9 @@ meaning of EQUALP."
 	  (if-let ((result (search-loop-path movements ss)))
 	    (progn (incf total-count)
 		   (push result (aref loops (1- (length ss)))))
-	    (collect ss into invalid-loops)))
+	    (progn
+	      (format t " ...failed.")
+	      (collect ss into invalid-loops))))
 	(finally
 	 (format t "~%duplicated loops detected --- ~a/~a" duplicated-count i)
 	 (format t "~%valid loops in total --- ~a/~a" total-count i)
