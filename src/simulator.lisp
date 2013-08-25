@@ -47,7 +47,7 @@
 	(summing (abs (- pos2 pos1)))))
 
 (defmethod constraint-ordering-op ((n state-node))
-  (heuristic-cost-between n (goal n)))
+  0) ;; it was found to have no effect if any.
 
 @export
 (defun search-loop-path (movements steady-state)
@@ -143,6 +143,6 @@ meaning of EQUALP."
 	(finally
 	 (format t "~%duplicated loops detected --- ~a/~a" duplicated-count i)
 	 (format t "~%valid loops in total --- ~a/~a" total-count i)
-	 (format t "~%these loops were invalid:~%~w" invalid-loops)
+	 ;; (format t "~%these loops were invalid:~%~w" invalid-loops)
 	 
 	 (return (values loops invalid-loops)))))
