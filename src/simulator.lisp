@@ -4,7 +4,7 @@
 @export
 (defclass state-node (searchable-node)
   ((current-state :initarg :current-state :reader current-state)
-   (goal :initarg :goal :reader goal)
+   (goal :initarg :goal :accessor goal)
    (movements :initarg :movements :reader movements)
    (complementary-edge-class :initform 'transition)))
 
@@ -12,16 +12,18 @@
   (make-hash-table :test #'equalp))
 (defmethod allocate-instance :around
     ((class (eql (find-class 'state-node)))
-     &key movements current-state)
+     &key movements current-state goal)
   (let ((state-hash
 	 (or (gethash movements *movements-hash*)
 	     (setf (gethash movements *movements-hash*)
 		   (make-hash-table :test #'equalp)))))
     ;; (when (gethash current-state state-hash)
     ;;   (format t "allocation stopped!"))
-    (or (gethash current-state state-hash)
-	(setf (gethash current-state state-hash)
-	      (call-next-method)))))
+    (if-let ((found (gethash current-state state-hash)))
+      (progn (setf (goal found) goal)
+	     found)
+      (setf (gethash current-state state-hash)
+	    (call-next-method)))))
 
 (defmethod print-object ((n state-node) s)
   (print-unreadable-object (n s :type t)
@@ -57,16 +59,16 @@
 		  :movements movements
 		  :current-state (make-eol steady-state
 					   (length movements))))
-	   (last (a*-search
-		  (make-instance
+	   (start (make-instance
 		   'state-node
 		   :movements movements
 		   :goal goal
-		   :current-state steady-state)
-		  goal)))
-      (iter (for node first last then (parent node))
-	    (while node)
-	    (collect (current-state node) at beginning)))))
+		   :current-state steady-state)))
+      (setf (goal goal) goal)
+      (let ((last (a*-search start goal)))
+	(iter (for node first last then (parent node))
+	      (while node)
+	      (collect (current-state node) at beginning))))))
 
 (defun %make-state-node (movements current-state goal n)
   (make-instance
