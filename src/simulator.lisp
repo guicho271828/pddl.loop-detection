@@ -111,11 +111,14 @@
   "Returns the list of solution path from start-of-loop to end-of-loop.
 start-of-loop is always the same list to the steady-state in the
 meaning of EQUALP."
-
   (iter (with loops = (make-array (length movements) :initial-element nil))
-	(for ss in (exploit-steady-state movements))
+	(with steady-states = (exploit-steady-state movements))
+	(with max = (length steady-states))
+	(for i from 0)
+	(for ss in steady-states)
+	(format t "~%~a/~a: " i max)
 	(if-let ((duplicated (%check-duplicate ss loops)))
 	  (%report-duplication ss duplicated)
 	  (when-let ((result (search-loop-path movements ss)))
-	    (push result (aref loops (length ss)))))
+	    (push result (aref loops (1- (length ss))))))
 	(finally (return loops))))
