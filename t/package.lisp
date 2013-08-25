@@ -83,7 +83,7 @@
 	 :length 2)))))
 
 (test (search-loop-path)
-  (time (search-loop-path movements (nth 100 steady-states))))
+  (time (search-loop-path movements (lastcar steady-states))))
 
 (defun test-interactively ()
   (let ((i 0))
@@ -94,4 +94,4 @@
       (error "what to do next?"))))
 
 (test (loopable-steady-states :depends-on search-loop-path)
-  (loopable-steady-states movements2))
+  (time (loopable-steady-states movements2)))
