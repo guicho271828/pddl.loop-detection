@@ -51,6 +51,7 @@
 
 @export
 (defun search-loop-path (movements steady-state)
+  (remhash movements *movements-hash*)
   (handler-return ((path-not-found (lambda (c)
 				     @ignore c
 				     nil)))
@@ -100,7 +101,9 @@
 			(null      ; else, the resource constraint should be kept
 			 (intersection
 			  (nth n2 movements)
-			  (set-difference used (nth n movements))))))
+			  (set-difference used (nth n movements)
+					  :test #'eqstate)
+			  :test #'eqstate))))
 	       (collect n)))))))
 
 (defun %report-duplication (ss duplicated)
