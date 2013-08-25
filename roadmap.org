@@ -518,6 +518,67 @@ mutex の遷移だけを考える簡易プランナでそれらの一部を検�
 A*探索を用いて検証。ヒューリスティクス関数は、
 
 $(\mbox{ベースの数}) - (\mbox{eolとマッチしている状態の数})$
+*** dead lock の例
+
+STT: pddl-atomic-state (fact)
+
+#+BEGIN_SRC lisp
+(((STT HOLD ((O ARM1 ∈ ARM) (O B-0 ∈ BASE))))
+ ((STT AT ((O B-0 ∈ BASE) (O GASKET-MACHINE ∈ MACHINE))))
+ ((STT HOLD ((O ARM1 ∈ ARM) (O B-0 ∈ BASE))))
+ ((STT AT ((O B-0 ∈ BASE) (O TABLE1 ∈ TABLE))))
+ ((STT HOLD ((O ARM2 ∈ ARM) (O B-0 ∈ BASE))))
+ ((STT AT ((O B-0 ∈ BASE) (O SCREW-MACHINE-A ∈ MACHINE))))
+ ((STT HOLD ((O ARM2 ∈ ARM) (O B-0 ∈ BASE))))
+ ((STT AT ((O B-0 ∈ BASE) (O OILING-MACHINE ∈ MACHINE))))
+ ((STT HOLD ((O ARM2 ∈ ARM) (O B-0 ∈ BASE))))
+ ((STT AT ((O B-0 ∈ BASE) (O TABLE2 ∈ TABLE))))
+ ((STT HOLD ((O ARM2 ∈ ARM) (O B-0 ∈ BASE))))
+ ((STT AT ((O B-0 ∈ BASE) (O SCREW-MACHINE-C ∈ MACHINE))))
+ ((STT HOLD ((O ARM2 ∈ ARM) (O B-0 ∈ BASE))))
+ ((STT AT ((O B-0 ∈ BASE) (O TABLE2 ∈ TABLE))))
+ ((STT HOLD ((O ARM1 ∈ ARM) (O B-0 ∈ BASE))))
+ ((STT AT ((O B-0 ∈ BASE) (O INSPECTION-MACHINE ∈ MACHINE))))
+ ((STT HOLD ((O ARM1 ∈ ARM) (O B-0 ∈ BASE))))
+ ((STT AT ((O B-0 ∈ BASE) (CONST TABLE-OUT ∈ TABLE)))))
+#+END_SRC
+
+配置 1,6,7,11,16,17 は dead lock
+
+| at        | hold     |    | step 0 | step 1 | step 2      |
+|-----------+----------+----+--------+--------+-------------|
+|           | arm1     |  0 |        |        |             |
+| gasket    |          |  1 | b      | b      | b           |
+|           | arm1     |  2 |        |        |             |
+| table1    |          |  3 |        |        |             |
+|           | arm2     |  4 |        |        |             |
+|-----------+----------+----+--------+--------+-------------|
+| screq     |          |  5 |        |        |             |
+|           | arm2     |  6 | b      | b      | b(deadlock) |
+| oiling    |          |  7 | b      | b      | b(deadlock) |
+|           | arm2     |  8 |        |        |             |
+| table2    |          |  9 |        |        |             |
+|-----------+----------+----+--------+--------+-------------|
+|           | arm2     | 10 |        |        |             |
+| screw     |          | 11 | b      | b      | b(deadlock) |
+|           | arm2     | 12 |        |        |             |
+| table2    |          | 13 |        |        |             |
+|           | arm1     | 14 |        |        |             |
+|-----------+----------+----+--------+--------+-------------|
+| inspec    |          | 15 |        |        |             |
+|           | arm1     | 16 | b      | b      |             |
+| table-out |          | 17 | b      |        | *b*         |
+| (finish)  | (finish) | 18 |        | *b*    | b           |
+|           |          |    |        |        |             |
+
+#+BEGIN_NOTE
+資源を全部appendして検出していたけど、
+次状態で必要な資源ごとに分類した
+ほうがチェックが早そう。
+#+END_NOTE
+
+1 6 7 11 16 17
+0 5 6 10 15 16
 
 ** steady state をヒューリスティックに並べる
 
