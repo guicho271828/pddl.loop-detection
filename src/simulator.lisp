@@ -4,6 +4,7 @@
 @export
 (defclass state-node (searchable-node)
   ((current-state :initarg :current-state :reader current-state)
+   (goal :initarg :goal :reader goal)
    (movements :initarg :movements :reader movements)
    (complementary-edge-class :initform 'transition)))
 
@@ -43,21 +44,26 @@
 	(for pos2 in (current-state n2))
 	(summing (abs (- pos2 pos1)))))
 
+(defmethod constraint-ordering-op ((n state-node))
+  (heuristic-cost-between n (goal n)))
+
 @export
 (defun search-loop-path (movements steady-state)
   (handler-return ((path-not-found (lambda (c)
 				     @ignore c
 				     nil)))
-    (let ((last (a*-search
-		 (make-instance
-		  'state-node
-		  :movements movements
-		  :current-state steady-state)
-		 (make-instance
+    (let* ((goal (make-instance
 		  'state-node
 		  :movements movements
 		  :current-state (make-eol steady-state
-					   (length movements))))))
+					   (length movements))))
+	   (last (a*-search
+		  (make-instance
+		   'state-node
+		   :movements movements
+		   :goal goal
+		   :current-state steady-state)
+		  goal)))
       (iter (for node first last then (parent node))
 	    (while node)
 	    (collect (current-state node) at beginning)))))
@@ -81,10 +87,9 @@
 	(lambda (n)
 	  (let ((n2 (1+ n)))
 	    (and
-	     ;; n=max iff n is carry-out. 
-	     (< n max)
-	     ;; carry-out is ignored
+	     (< n max)  		; n=max iff n is carry-out. 
 	     (not (member n2 current-state))
+					; carry-out is ignored
 	     ;; if the next place is carry-out, it does not
 	     ;; consume any resource
 	     (if (= max n2)
@@ -97,14 +102,14 @@
 
 (defun %report-duplication (ss duplicated)
   @ignore duplicated
-  (format t "~%~w is not searched because it had appeared in the other loop." ss))
+  (format t "~w is not searched because it had appeared in the other loop." ss))
 
 (defun %check-duplicate (ss loops)
 
   (some
    (lambda (path)
      (member ss path :test #'equalp))
-   (aref loops (length ss))))
+   (aref loops (1- (length ss)))))
 
 @export
 (defun loopable-steady-states (movements)
@@ -113,9 +118,13 @@ start-of-loop is always the same list to the steady-state in the
 meaning of EQUALP."
 
   (iter (with loops = (make-array (length movements) :initial-element nil))
-	(for ss in (exploit-steady-state movements))
+	(with steady-states = (exploit-steady-state movements))
+	(with max = (length steady-states))
+	(for i from 0)
+	(for ss in steady-states)
+	(format t "~%~a/~a: " i max)
 	(if-let ((duplicated (%check-duplicate ss loops)))
 	  (%report-duplication ss duplicated)
 	  (when-let ((result (search-loop-path movements ss)))
-	    (push result (aref loops (length ss)))))
+	    (push result (aref loops (1- (length ss))))))
 	(finally (return loops))))
