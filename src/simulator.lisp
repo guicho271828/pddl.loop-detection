@@ -123,11 +123,16 @@ meaning of EQUALP."
   (iter (with loops = (make-array (length movements) :initial-element nil))
 	(with steady-states = (exploit-steady-state movements))
 	(with max = (length steady-states))
+	(with duplicated-count = 0)
 	(for i from 0)
 	(for ss in steady-states)
 	(format t "~%~a/~a: " i max)
 	(if-let ((duplicated (%check-duplicate ss loops)))
-	  (%report-duplication ss duplicated)
+	  (progn
+	    (incf duplicated-count)
+	    (%report-duplication ss duplicated))
 	  (when-let ((result (search-loop-path movements ss)))
 	    (push result (aref loops (1- (length ss))))))
-	(finally (return loops))))
+	(finally
+	 (format t "~%duplicated loops detected --- ~a/~a" duplicated-count i)
+	 (return loops))))
