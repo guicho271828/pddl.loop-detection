@@ -9,24 +9,28 @@
 ;; loops is (list plan*)
 
 @export
+(defun unit-list-head (diff)
+  (assert (= 1 (length diff)))
+  (car diff))
+
+@export
 (defun loop-heuristic-cost (schedule movements-indices loop-plan)
   "SCHEDULE must be a fundamental-schedule (which only processes ONE base).
 DO NOT use shrinked MOVEMENTS-INDICES. It will cause an error."
-  (iter (for state in loop-plan)
-	(for pstate previous state)
-	(unless pstate (next-iteration))
-	(for diff = (set-difference state pstate))
-	(assert (= 1 (length diff)))
-	(for changed = (car diff))
-	(assert (plusp changed))
-	(summing
-	 (movement-transition-cost
-	  schedule
-	  (nth (1- changed) movements-indices)
-	  (nth changed movements-indices)))))
+  (+ (movement-transition-cost schedule 0 (first (first loop-plan)))
+     (reduce #'+
+	  (mapcar (compose 
+		   (lambda (changed)
+		     (movement-transition-cost
+		      schedule
+		      (nth (1- changed) movements-indices)
+		      (nth changed movements-indices)))
+		   #'unit-list-head
+		   #'set-difference)
+		  (cdr loop-plan)
+		  loop-plan))))
 
 @export
 (defun sort-loops (loops schedule movements-indices)
   (sort loops #'< :key (curry #'loop-heuristic-cost
 			      schedule movements-indices)))
-  

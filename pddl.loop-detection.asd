@@ -19,7 +19,8 @@
                 ((:file :mutex)
 		 (:file :movement)
 		 (:file :steady-state)
-		 (:file :simulator))))
+		 (:file :simulator)
+		 (:file :ranker))))
   :description ""
   :long-description
   #.(with-open-file (stream (merge-pathnames

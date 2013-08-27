@@ -60,9 +60,9 @@
     (movements-shrinked movements-indices-shrinked)
   (shrink-movements movements movements-indices))
 
-(defvar movements-shrinked2
+(defparameter movements-shrinked2
   (nthcdr 10 movements-shrinked))
-(defvar movements-indices-shrinked2
+(defparameter movements-indices-shrinked2
   (nthcdr 10 movements-indices-shrinked))
 
 (test extract-movements
@@ -76,14 +76,20 @@
 	cell-assembly))
   ))
 
-(defvar steady-states
-  (exploit-steady-state movements-shrinked))
-(defvar steady-states2
-  (exploit-steady-state movements-shrinked2))
+(defparameter steady-states
+  (shrink-steady-states
+   movements-shrinked
+   (exploit-steady-states movements-shrinked)))
+(defparameter steady-states2
+  (shrink-steady-states
+   movements-shrinked2
+   (exploit-steady-states movements-shrinked2)))
 
 (test (steady-states :depends-on extract-movements)
   (let ((movements movements-shrinked2))
-    (dolist (ss (exploit-steady-state movements))
+    (dolist (ss (shrink-steady-states
+		 movements
+		 (exploit-steady-states movements)))
       (when (>= (length ss) 2)
 	(map-combinations
 	 (lambda (list)
@@ -103,7 +109,18 @@
       (time (search-loop-path movements-shrinked (nth i steady-states)))
       (error "what to do next?"))))
 
+(defparameter loopable-steady-states
+  (loopable-steady-states movements-shrinked))
+
 (test (loopable-steady-states :depends-on search-loop-path)
   (time (loopable-steady-states movements-shrinked2)))
 
+(defparameter loopable-steady-states-sorted
+  (sort-loops loopable-steady-states
+	      schedule
+	      movements-indices))
 
+(defparameter loopable-steady-states-sorted-score-distribution
+  (mapcar (curry #'loop-heuristic-cost
+		 schedule movements-indices)
+	  loopable-steady-states))
