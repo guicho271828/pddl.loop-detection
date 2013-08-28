@@ -28,7 +28,7 @@
 	    (init (categorize 
 		   init :key 
 		   (lambda (state)
-		     (if (some (curry #'related-to state) bases) t nil))))
+		     (if (some (rcurry #'related-to state) bases) t nil))))
 	    (init/bases (gethash nil init))
 	    (init+bases (gethash t   init))
 	    (mutices (mutex-predicates (domain unit-problem)))
@@ -41,8 +41,7 @@
 		:init init/bases       ; warning!! to the old problem!
 		:goal '(and)
 		:metric metric)))
-
-	 (let ((new-base (gen-base '-new)))
+	 (let ((new-base (pddl-object :name (gen-base '-new) :type type)))
 	   (%step0 new-base)
 	   (%step1 init+bases new-base base-type-p)
 
@@ -73,7 +72,7 @@
 
 (defun %step0 (base)
   "Add each object."
-  (push base (objects *problem*)))
+  (push base (objects/const *problem*)))
 
 (defun %step1 (prototype-atomic-states base base-type-p)
   "Insert every states which is describing the base in the
