@@ -124,3 +124,16 @@
   (mapcar (curry #'loop-heuristic-cost
 		 schedule movements-indices)
 	  loopable-steady-states))
+
+(defparameter loop-plan
+  (random-elt loopable-steady-states))
+(defparameter base-type
+  (type (object cell-assembly-model2a-1 'b-0)))
+
+(defparameter prob
+  cell-assembly-model2a-1)
+
+(defparameter steady-state-problem
+  (build-steady-state-problem
+   prob loop-plan schedule
+   movements-shrinked movements-indices-shrinked base-type))
