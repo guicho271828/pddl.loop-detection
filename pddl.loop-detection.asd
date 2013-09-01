@@ -20,7 +20,8 @@
 		 (:file :movement)
 		 (:file :steady-state)
 		 (:file :simulator)
-		 (:file :ranker))))
+		 (:file :ranker)
+		 (:file :problem-builder))))
   :description ""
   :long-description
   #.(with-open-file (stream (merge-pathnames

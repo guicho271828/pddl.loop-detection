@@ -77,25 +77,20 @@
   ))
 
 (defparameter steady-states
-  (shrink-steady-states
-   movements-shrinked
-   (exploit-steady-states movements-shrinked)))
+  (exploit-steady-states movements-shrinked))
 (defparameter steady-states2
-  (shrink-steady-states
-   movements-shrinked2
-   (exploit-steady-states movements-shrinked2)))
+  (exploit-steady-states movements-shrinked2))
 
 (test (steady-states :depends-on extract-movements)
   (let ((movements movements-shrinked2))
-    (dolist (ss (shrink-steady-states
-		 movements
-		 (exploit-steady-states movements)))
+    (dolist (ss (exploit-steady-states movements))
       (when (>= (length ss) 2)
 	(map-combinations
 	 (lambda (list)
 	   (is (null (intersection (first list) (second list)))))
 	 (mapcar (rcurry #'nth movements) ss)
-	 :length 2)))))
+	 :length 2))
+      (is (= 0 (first ss))))))
 
 (test (search-loop-path)
   (time (search-loop-path movements-shrinked
@@ -106,11 +101,13 @@
     (do-restart ((next (lambda ()
 			 (incf i))))
       (print (nth i steady-states))
-      (time (search-loop-path movements-shrinked (nth i steady-states)))
+      (let ((path (time (search-loop-path movements-shrinked (nth i steady-states)))))
+	(print path)
+	(terpri))
       (error "what to do next?"))))
 
 (defparameter loopable-steady-states
-  (loopable-steady-states movements-shrinked))
+  (loopable-steady-states movements-shrinked steady-states :verbose nil))
 
 (test (loopable-steady-states :depends-on search-loop-path)
   (time (loopable-steady-states movements-shrinked2)))
@@ -124,3 +121,23 @@
   (mapcar (curry #'loop-heuristic-cost
 		 schedule movements-indices)
 	  loopable-steady-states))
+
+(defparameter loop-plan
+  (random-elt loopable-steady-states))
+(defparameter base-type
+  (type (object cell-assembly-model2a-1 'b-0)))
+
+(defparameter prob
+  cell-assembly-model2a-1)
+
+(defparameter steady-state-problem
+  (build-steady-state-problem
+   prob loop-plan schedule
+   movements-shrinked movements-indices-shrinked base-type))
+
+(defparameter steady-state-problems
+  (iter (for loop-plan in loopable-steady-states)
+	(collect
+	    (build-steady-state-problem
+	     prob loop-plan schedule
+	     movements-shrinked movements-indices-shrinked base-type))))
