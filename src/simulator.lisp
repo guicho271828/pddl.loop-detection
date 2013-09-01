@@ -119,31 +119,31 @@
    (aref loops (1- (length ss)))))
 
 @export
-(defun loopable-steady-states (movements-shrinked)
+(defun loopable-steady-states (movements-shrinked steady-states &key (verbose t))
   "Returns the list of solution path from start-of-loop to end-of-loop.
 start-of-loop is always the same list to the steady-state in the
 meaning of EQUALP."
   (iter (with loops = (make-array (length movements-shrinked) :initial-element nil))
-	(with steady-states = 
-	      (shrink-steady-states
-	       movements-shrinked
-	       (exploit-steady-states movements-shrinked)))
 	(with max = (length steady-states))
 	(with duplicated-count = 0)
 	(with total-count = 0)
 	(for i from 0)
 	(for ss in steady-states)
-	(format t "~%~a/~a: " i max)
+	(when verbose
+	  (format t "~%~a/~a: " i max))
 	(if-let ((duplicated (%check-duplicate ss loops)))
 	  (progn
 	    (incf duplicated-count)
 	    (incf total-count)
-	    (%report-duplication ss duplicated))
-	  (if-let ((result (search-loop-path movements-shrinked ss)))
+	    (when verbose
+	      (%report-duplication ss duplicated)))
+	  (if-let ((result (search-loop-path movements-shrinked ss :verbose verbose)))
 	    (progn (incf total-count)
 		   (push result (aref loops (1- (length ss)))))
-	    (progn (format t " ...failed.")
-		   (collect ss into invalid-loops))))
+	    (progn 
+	      (when verbose
+		(format t " ...failed."))
+	      (collect ss into invalid-loops))))
 	(finally
 	 (format t "~%duplicated loops detected --- ~a/~a" duplicated-count i)
 	 (format t "~%valid loops in total --- ~a/~a" total-count i)
