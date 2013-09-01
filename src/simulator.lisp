@@ -28,7 +28,7 @@
 (defmethod print-object ((n state-node) s)
   (print-unreadable-object (n s :type t)
     (with-slots (current-state) n
-      (format s "( ~{~3@<~a ~>~})" current-state))))
+      (format s "~a :cost ~a" current-state (cost n)))))
 
 
 @export
@@ -46,38 +46,39 @@
   ;; (iter (for pos1 in (current-state n1))
   ;; 	(for pos2 in (current-state n2))
   ;; 	(summing (abs (- pos2 pos1))))
-  0)
+  0
+  )
 
 (defmethod constraint-ordering-op ((n state-node))
   0) ;; it was found to have no effect if any.
 
 @export
-(defun search-loop-path (movements steady-state)
-  (remhash movements *movements-hash*)
+(defun search-loop-path (movements-shrinked steady-state &key (verbose t))
+  (remhash movements-shrinked *movements-hash*)
   (handler-return ((path-not-found (lambda (c)
 				     @ignore c
 				     nil)))
     (let* ((goal (make-instance
 		  'state-node
-		  :movements movements
+		  :movements movements-shrinked
 		  :current-state (make-eol steady-state
-					   (length movements))))
+					   (length movements-shrinked))))
 	   (start (make-instance
 		   'state-node
-		   :movements movements
+		   :movements movements-shrinked
 		   :goal goal
 		   :current-state steady-state)))
       (setf (goal goal) goal)
-      (let ((last (a*-search start goal)))
+      (let ((last (a*-search start goal :verbose verbose)))
 	(iter (for node first last then (parent node))
 	      (while node)
 	      (collect (current-state node) at beginning))))))
 
-(defun %make-state-node (movements current-state goal n)
+(defun %make-state-node (movements-shrinked current-state goal n)
   (make-instance
    'state-node
    :goal goal
-   :movements movements
+   :movements movements-shrinked
    :current-state (substitute (1+ n) n current-state)))
 
 (defmethod generate-nodes ((state state-node))
@@ -95,12 +96,11 @@
 	     (for goal-n in goal-state)
 	     (for n2 = (1+ n))
 	     (when (and ; include n if
-		    (not (= n goal-n)) ; n is not achieved yet
-		    (< n max) ; n+1 is not carry-out.
-		    (not (member n2 current-state)) ; n+1 is unoccupied
-		    (if (= max n2) ; if n+1 is carry-out
-			t          ; always ok, no consumption of resource
-			(null      ; else, the resource constraint should be kept
+		    (not (= n goal-n)) ; the goal is not achieved yet
+		    (< n max) ; n is not already the carry-out.
+		    (if (= max n2) ; check the resource conflict.
+			t          ; if n+1 is the carry-out, it doesn't consume resources.
+			(null      ; else, the resource constraint should hold
 			 (intersection
 			  (nth n2 movements)
 			  (set-difference used (nth n movements)

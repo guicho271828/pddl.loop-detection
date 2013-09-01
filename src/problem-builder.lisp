@@ -30,7 +30,6 @@
 		   (lambda (state)
 		     (if (some (rcurry #'related-to state) bases) t nil))))
 	    (init/bases (gethash nil init))
-	    (init+bases (gethash t   init))
 	    (mutices (mutex-predicates (domain unit-problem)))
 	    (ss (car loop-plan)))  ; steady-state start
        (let* ((*problem*
@@ -41,33 +40,32 @@
 		:init init/bases       ; warning!! to the old problem!
 		:goal '(and)
 		:metric metric)))
-	 (let ((new-base (pddl-object :name (gen-base '-new) :type type)))
-	   (%step0 new-base)
-	   (%step1 init+bases new-base base-type-p)
 
-	   ;; Add new objects, their corresponding initial states and
-	   ;; the goal conditions.
-	   (iter
-	     (for position in ss)
-	     (for base = (pddl-object :name (gen-base position) :type type))
-	     (for pbase previous base initially new-base)
-	     (for prototype-atomic-states = 
-		  (remove-if-not
-		   (lambda (atomic-state)
-		     (and (typep atomic-state 'pddl-atomic-state)
-			  (some (rcurry #'related-to atomic-state) bases)))
-		   (timed-state-state
-		    (timed-action-end
-		     (nth (1+ (nth position movements-indices-shrinked))
-			  schedule)))))
-	     (%step0 base)
-	     (%step1 prototype-atomic-states base base-type-p)
-	     (%step2 base base-type-p movements-shrinked mutices position)
-	     (%step3 prototype-atomic-states pbase base-type-p)
+	 ;; Add new objects, their corresponding initial states and
+	 ;; the goal conditions.
+	 (iter
+	   (for position in ss)
+	   (for base = (pddl-object :name (gen-base position) :type type))
+	   (for pbase previous base)
+	   (unless pbase (next-iteration))
+	   (for prototype-atomic-states = 
+		(remove-if-not
+		 (lambda (atomic-state)
+		   (and (typep atomic-state 'pddl-atomic-state)
+			(some (rcurry #'related-to atomic-state) bases)))
+		 (timed-state-state
+		  (timed-action-end
+		   (nth (1+ (nth position movements-indices-shrinked))
+			schedule)))))
+	   (%step0 base)
+	   (%step1 prototype-atomic-states base base-type-p)
+	   (%step2 base base-type-p movements-shrinked mutices position)
+	   (%step3 prototype-atomic-states pbase base-type-p)
 
-	     (finally
-	      (%step3 (positive-predicates
-		       (goal unit-problem)) base base-type-p))))
+	   (finally
+	    (%step3 (positive-predicates
+		     (goal unit-problem)) base base-type-p)))
+	 
 	 *problem*)))))
 
 (defun %step0 (base)
