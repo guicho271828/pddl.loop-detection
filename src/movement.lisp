@@ -66,12 +66,10 @@ its precondition or the effect."
 
 @export
 (defun shrink-movements (movements indices)
-  (iter (for states in movements)
-	(for i in indices)
-	(for pstates previous states)
-	(for previ previous i)
-	(unless pstates
-	  (next-iteration))
+  (iter (for states in (cdr movements))
+	(for i in (cdr indices))
+	(for pstates in movements)
+	(for previ in indices)
 	(unless (or (set-equal states pstates :test #'eqstate)
 		    (null states))
 	  (collect states into shrinked-states)
