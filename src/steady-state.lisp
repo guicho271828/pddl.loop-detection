@@ -21,6 +21,7 @@
 	  (reduce (lambda (prev now) (+ now (* max prev))) (reverse lst)))))
 
 @export
+@doc "obsoleted"
 (defun shrink-steady-states (movements-shrinked steady-states)
   (let ((max (length movements-shrinked)))  
     (let ((v (make-array max :initial-element nil)))
@@ -30,16 +31,21 @@
 	    (appending
 	     (%shrink-bucket bucket max))))))
 
-@export
+@export @doc "returns a list of steady states. Each steady state is a
+list of mutex position index.  0 indicates carry-in, where a base
+is waiting to be carried into the factory and where no mutex
+exists. Any of the resulting steady-states must have one base placed
+at carry-in."
 (defun exploit-steady-states (movements-shrinked)
-  (let ((max (length movements-shrinked)))
-    (mapcon
-     (lambda (rest)
-       (%exploit-rec rest
-		     nil
-		     nil
-		     (- max (length rest))))
-     movements-shrinked)))
+  (let ((movements-without-carry-in (cdr movements-shrinked)))
+    (let ((max (length movements-without-carry-in)))
+      (mapcon
+       (lambda (rest)
+	 (%exploit-rec rest
+		       nil
+		       '(0)
+		       (1+ (- max (length rest)))))
+       movements-without-carry-in))))
 
 (defun %exploit-rec (movements-shrinked used-mutices base-positions i)
   ;(break+ used-mutices (car movements-shrinked))
