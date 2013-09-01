@@ -42,9 +42,11 @@
 (defmethod cost ((tr transition))
   1)
 (defmethod heuristic-cost-between ((n1 state-node) (n2 state-node))
-  (iter (for pos1 in (current-state n1))
-	(for pos2 in (current-state n2))
-	(summing (abs (- pos2 pos1)))))
+  ;; this value is always the same, so it is meaningless.
+  ;; (iter (for pos1 in (current-state n1))
+  ;; 	(for pos2 in (current-state n2))
+  ;; 	(summing (abs (- pos2 pos1))))
+  0)
 
 (defmethod constraint-ordering-op ((n state-node))
   0) ;; it was found to have no effect if any.
