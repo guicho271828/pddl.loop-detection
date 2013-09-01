@@ -9,6 +9,7 @@
 	:guicho-a*
 	:iterate
 	:optima
+	:annot.doc
 	:cl-syntax
         :pddl
 	:pddl.scheduler

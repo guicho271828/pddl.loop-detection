@@ -70,9 +70,8 @@ its precondition or the effect."
 	(for i in (cdr indices))
 	(for pstates in movements)
 	(for previ in indices)
-	(unless (or (set-equal states pstates :test #'eqstate)
-		    (null states))
-	  (collect states into shrinked-states)
+	(unless (set-equal states pstates :test #'eqstate)
+	  (collect pstates into shrinked-states)
 	  (collect previ into shrinked-state-indices))
 	(finally
 	 (return (values
