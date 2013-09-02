@@ -7,6 +7,7 @@
   (:use :cl
 	:guicho-utilities
 	:guicho-a*
+	:guicho-red-black-tree
 	:iterate
 	:alexandria
 	:optima
