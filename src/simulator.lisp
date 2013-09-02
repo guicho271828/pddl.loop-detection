@@ -81,12 +81,26 @@
    :movements movements-shrinked
    :current-state (substitute (1+ n) n current-state)))
 
+(defun movable (n goal-n used movements)
+  (let ((n2 (1+ n))
+	(carry-out-index (length movements)))
+    (and ; include n if
+     (not (= n goal-n)) ; the goal is not achieved yet
+     (< n carry-out-index) ; n is not already the carry-out.
+     (if (= carry-out-index n2) ; check the resource conflict.
+	 t          ; if n+1 is the carry-out, it doesn't consume resources.
+	 (null      ; else, the resource constraint should hold
+	  (intersection
+	   (nth n2 movements)
+	   (set-difference used (nth n movements)
+			   :test #'eqstate)
+	   :test #'eqstate))))))
+
 (defmethod generate-nodes ((state state-node))
   (with-slots (movements current-state) state
     ;; movements: (mutex*)*
     ;; current: number*
-    (let* ((max (length movements))
-	   (goal (goal state))
+    (let* ((goal (goal state))
 	   (goal-state (current-state goal))
 	   (used (mappend (rcurry #'nth movements) current-state)))
       ;; used: mutices currently in use
@@ -94,18 +108,7 @@
        (curry #'%make-state-node movements current-state goal)
        (iter (for n in current-state)
 	     (for goal-n in goal-state)
-	     (for n2 = (1+ n))
-	     (when (and ; include n if
-		    (not (= n goal-n)) ; the goal is not achieved yet
-		    (< n max) ; n is not already the carry-out.
-		    (if (= max n2) ; check the resource conflict.
-			t          ; if n+1 is the carry-out, it doesn't consume resources.
-			(null      ; else, the resource constraint should hold
-			 (intersection
-			  (nth n2 movements)
-			  (set-difference used (nth n movements)
-					  :test #'eqstate)
-			  :test #'eqstate))))
+	     (when (movable n goal-n used movements)
 	       (collect n)))))))
 
 (defun %report-duplication (ss duplicated)
@@ -138,15 +141,26 @@ meaning of EQUALP."
 	    (when verbose
 	      (%report-duplication ss duplicated)))
 	  (if-let ((result (search-loop-path movements-shrinked ss :verbose verbose)))
-	    (progn (incf total-count)
-		   (push result (aref loops (1- (length ss)))))
+	    (let ((pos (1- (length ss))))
+		(symbol-macrolet ((bucket (aref loops pos)))
+		  (incf total-count)
+		  (setf bucket
+			(cons result
+			      (remove-if (lambda (other-path)
+					   (when (find (first other-path) result
+						       :test #'equalp)
+					     (incf duplicated-count)
+					     t))
+					 bucket)))))
 	    (progn 
 	      (when verbose
 		(format t " ...failed."))
 	      (collect ss into invalid-loops))))
 	(finally
-	 (format t "~%duplicated loops detected --- ~a/~a" duplicated-count i)
-	 (format t "~%valid loops in total --- ~a/~a" total-count i)
+	 (format t "~%duplicated loops detected --- ~a/~a" duplicated-count max)
+	 (format t "~%valid loops in total --- ~a/~a" total-count max)
+	 (format t "~%valid loops w/o duplicated ones --- ~a/~a"
+		 (- total-count duplicated-count) max)
 	 ;; (format t "~%these loops were invalid:~%~w" invalid-loops)
 	 
 	 (return
