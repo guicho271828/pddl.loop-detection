@@ -39,5 +39,5 @@
 
 (defmethod asdf:perform ((op asdf:test-op)
 			 (system (eql (asdf:find-system :pddl.loop-detection))))
-  (funcall (find-symbol "RUN!" (find-package :fiveam)) :pddl)
+  (funcall (find-symbol "RUN!" (find-package :fiveam)) :pddl.loop-detection)
   t)

@@ -1,5 +1,5 @@
 #|
-  This file is a part of pddl.loop-detection project.
+This file is a part of pddl.loop-detection project.
 |#
 
 (in-package :cl-user)
@@ -28,8 +28,8 @@
 
 (defparameter schedule
   (reschedule
-     cell-assembly-model2a-1-6
-     :minimum-slack))
+   cell-assembly-model2a-1-6
+   :minimum-slack))
 
 ;; 輸送型のアクションを検出できれば - 場所がわかるかも。
 ;; 
@@ -49,53 +49,40 @@
 
 (defvar movements)
 (defvar movements-indices)
-
-(multiple-value-setq
-    (movements movements-indices)
-  (extract-movements 'b-0 schedule cell-assembly))
-
 (defvar movements-shrinked)
 (defvar movements-indices-shrinked)
 
-(multiple-value-setq
-    (movements-shrinked movements-indices-shrinked)
-  (shrink-movements movements movements-indices))
-
-(defparameter movements-shrinked2
-  (nthcdr 10 movements-shrinked))
-(defparameter movements-indices-shrinked2
-  (nthcdr 10 movements-indices-shrinked))
-
 (test extract-movements
   (finishes
-    (shrink-movements                ; (fact*)* --> (fact*)*
-       (extract-movements               ; (object,schedule,domain) --> (fact*)*
-	'b-0                           ; pddl-object/symbol
-	(reschedule                    ; (plan, algorithm) --> schedule
-	 cell-assembly-model2a-2-9     ; pddl-plan (model2a, 2 bases)
-	 :minimum-slack)               ; (eql :minimum-slack)
-	cell-assembly))
-  ))
+    (multiple-value-setq
+	(movements movements-indices)
+      (extract-movements 'b-0 schedule cell-assembly))
+    
+    (multiple-value-setq
+	(movements-shrinked movements-indices-shrinked)
+      (shrink-movements movements movements-indices))))
 
-(defparameter steady-states
-  (exploit-steady-states movements-shrinked))
-(defparameter steady-states2
-  (exploit-steady-states movements-shrinked2))
+(defvar steady-states)
 
 (test (steady-states :depends-on extract-movements)
-  (let ((movements movements-shrinked2))
-    (dolist (ss (exploit-steady-states movements))
-      (when (>= (length ss) 2)
-	(map-combinations
-	 (lambda (list)
-	   (is (null (intersection (first list) (second list)))))
-	 (mapcar (rcurry #'nth movements) ss)
-	 :length 2))
-      (is (= 0 (first ss))))))
+  (finishes
+    (setf steady-states 
+	  (exploit-steady-states movements-shrinked)))
+  
+  (for-all ((ss (lambda () (random-elt steady-states))))
+    (when (>= (length ss) 2)
+      (map-combinations
+       (lambda (list)
+	 (is (null (intersection (first list) (second list)))))
+       (mapcar (rcurry #'nth movements-shrinked) ss)
+       :length 2))
+    (is (= 0 (first ss)))))
 
-(test (search-loop-path)
-  (time (search-loop-path movements-shrinked
-			  (lastcar steady-states))))
+(test (search-loop-path :depends-on steady-states)
+  (time (search-loop-path
+	 movements-shrinked
+	 (lastcar steady-states))))
+
 
 (defun test-interactively ()
   (let ((i 0))
@@ -107,38 +94,41 @@
 	(terpri))
       (error "what to do next?"))))
 
-(defparameter loopable-steady-states
-  (loopable-steady-states movements-shrinked steady-states :verbose nil))
-
+(defvar loopable-steady-states)
 (test (loopable-steady-states :depends-on search-loop-path)
-  (time (loopable-steady-states movements-shrinked2)))
-
-(defparameter loopable-steady-states-sorted
-  (sort-loops loopable-steady-states
-	      schedule
-	      movements-indices))
-
-(defparameter loopable-steady-states-sorted-score-distribution
-  (mapcar (curry #'loop-heuristic-cost
-		 schedule movements-indices)
-	  loopable-steady-states))
-
-(defparameter loop-plan
-  (random-elt loopable-steady-states))
-(defparameter base-type
-  (type (object cell-assembly-model2a-1 'b-0)))
+  (format t "~%testing loopable-steady-states. It takes time so please wait...~2%")
+  (finishes
+    (time (loopable-steady-states
+	     movements-shrinked
+	     steady-states :verbose :modest))))
 
 (defparameter prob
   cell-assembly-model2a-1)
+(defparameter base-type
+  (type (object prob 'b-0)))
 
-(defparameter steady-state-problem
-  (build-steady-state-problem
-   prob loop-plan schedule
-   movements-shrinked movements-indices-shrinked base-type))
+(defvar steady-state-problems)
+(defvar steady-state-problem)
 
-(defparameter steady-state-problems
-  (iter (for loop-plan in loopable-steady-states)
-	(collect
-	    (build-steady-state-problem
-	     prob loop-plan schedule
-	     movements-shrinked movements-indices-shrinked base-type))))
+(test (build-problem :depends-on loopable-steady-states)
+  (finishes
+    (time
+     (iter (for loop-plan in loopable-steady-states)
+	   (collect
+	       (build-steady-state-problem
+		prob loop-plan schedule
+		movements-shrinked movements-indices-shrinked base-type)))))
+  (setf steady-state-problem
+	(random-elt steady-state-problems)))
+
+(defun write-problem (problem)
+  (with-open-file (s (merge-pathnames
+		      (name problem)
+		      (asdf:system-source-directory :pddl.loop-detection))
+		     :direction :output
+		     :if-exists :supersede
+		     :if-does-not-exist :create)
+    (print-pddl-object problem s)))
+
+(test (write-problems :depends-on build-problem)
+  (mapc #'write-problem steady-state-problems))

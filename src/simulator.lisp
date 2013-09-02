@@ -132,29 +132,40 @@ meaning of EQUALP."
 	(with total-count = 0)
 	(for i from 0)
 	(for ss in steady-states)
-	(when verbose
-	  (format t "~%~a/~a: " i max))
+	(case verbose
+	  ((2 t)       (format t "~%~a/~a: " i max))
+	  ((1 :modest) (when (zerop (mod i 60)) (terpri))))
 	(if-let ((duplicated (%check-duplicate ss loops)))
 	  (progn
 	    (incf duplicated-count)
 	    (incf total-count)
-	    (when verbose
-	      (%report-duplication ss duplicated)))
-	  (if-let ((result (search-loop-path movements-shrinked ss :verbose verbose)))
+	    (case verbose
+	      ((2 t)       (%report-duplication ss duplicated))
+	      ((1 :modest) (write-char #\D))))
+	  (if-let ((result (search-loop-path
+			    movements-shrinked ss
+			    :verbose (case verbose
+				       ((2 t) t)
+				       ((1 :modest) nil)
+				       (otherwise nil)))))
 	    (let ((pos (1- (length ss))))
-		(symbol-macrolet ((bucket (aref loops pos)))
-		  (incf total-count)
-		  (setf bucket
-			(cons result
-			      (remove-if (lambda (other-path)
-					   (when (find (first other-path) result
-						       :test #'equalp)
-					     (incf duplicated-count)
-					     t))
-					 bucket)))))
+	      (case verbose
+		((2 t)       (format t " ...success!"))
+		((1 :modest) (write-char #\.)))
+	      (symbol-macrolet ((bucket (aref loops pos)))
+		(incf total-count)
+		(setf bucket
+		      (cons result
+			    (remove-if (lambda (other-path)
+					 (when (find (first other-path) result
+						     :test #'equalp)
+					   (incf duplicated-count)
+					   t))
+				       bucket)))))
 	    (progn 
-	      (when verbose
-		(format t " ...failed."))
+	      (case verbose
+		((2 t)       (format t " ...failed."))
+		((1 :modest) (write-char #\F)))
 	      (collect ss into invalid-loops))))
 	(finally
 	 (format t "~%duplicated loops detected --- ~a/~a" duplicated-count max)
