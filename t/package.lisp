@@ -64,25 +64,24 @@ This file is a part of pddl.loop-detection project.
 
 (defvar steady-states)
 
-(test (steady-states :depends-on extract-movements)
+(test (steady-states)
   (finishes
     (setf steady-states 
 	  (exploit-steady-states movements-shrinked)))
-  
-  (for-all ((ss (lambda () (random-elt steady-states))))
-    (when (>= (length ss) 2)
-      (map-combinations
-       (lambda (list)
-	 (is (null (intersection (first list) (second list)))))
-       (mapcar (rcurry #'nth movements-shrinked) ss)
-       :length 2))
-    (is (= 0 (first ss)))))
+  (let ((*num-trials* 30))
+    (for-all ((ss (lambda () (random-elt steady-states))))
+      (when (>= (length ss) 2)
+	(map-combinations
+	 (lambda (list)
+	   (is (null (intersection (first list) (second list)))))
+	 (mapcar (rcurry #'nth movements-shrinked) ss)
+	 :length 2))
+      (is (= 0 (first ss))))))
 
-(test (search-loop-path :depends-on steady-states)
+(test (search-loop-path)
   (time (search-loop-path
 	 movements-shrinked
 	 (lastcar steady-states))))
-
 
 (defun test-interactively ()
   (let ((i 0))
@@ -95,12 +94,13 @@ This file is a part of pddl.loop-detection project.
       (error "what to do next?"))))
 
 (defvar loopable-steady-states)
-(test (loopable-steady-states :depends-on search-loop-path)
+(test (loopable-steady-states)
   (format t "~%testing loopable-steady-states. It takes time so please wait...~2%")
   (finishes
-    (time (loopable-steady-states
-	     movements-shrinked
-	     steady-states :verbose :modest))))
+    (time (setf loopable-steady-states
+		(loopable-steady-states
+		   movements-shrinked
+		   steady-states :verbose nil)))))
 
 (defparameter prob
   cell-assembly-model2a-1)
@@ -110,25 +110,32 @@ This file is a part of pddl.loop-detection project.
 (defvar steady-state-problems)
 (defvar steady-state-problem)
 
-(test (build-problem :depends-on loopable-steady-states)
+(test (build-problem)
   (finishes
     (time
-     (iter (for loop-plan in loopable-steady-states)
-	   (collect
-	       (build-steady-state-problem
-		prob loop-plan schedule
-		movements-shrinked movements-indices-shrinked base-type)))))
+     (setf steady-state-problems
+	   (iter (for loop-plan in loopable-steady-states)
+		 (collect
+		     (build-steady-state-problem
+		      prob loop-plan schedule
+		      movements-shrinked movements-indices-shrinked base-type))))))
   (setf steady-state-problem
 	(random-elt steady-state-problems)))
 
-(defun write-problem (problem)
-  (with-open-file (s (merge-pathnames
-		      (name problem)
-		      (asdf:system-source-directory :pddl.loop-detection))
+(defun write-problem (problem &optional path)
+  (unless path
+    (setf path
+	  (merge-pathnames
+	   (format nil "~a/~a" (name (domain problem)) (name problem))
+	   (asdf:system-source-directory
+	    :pddl.loop-detection))))
+  (ensure-directories-exist path :verbose t)
+  (print path)
+  (with-open-file (s path
 		     :direction :output
 		     :if-exists :supersede
 		     :if-does-not-exist :create)
     (print-pddl-object problem s)))
 
-(test (write-problems :depends-on build-problem)
-  (mapc #'write-problem steady-state-problems))
+;; (test (write-problems)
+;;   (mapc #'write-problem steady-state-problems))

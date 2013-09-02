@@ -21,7 +21,7 @@
 	  (reduce (lambda (prev now) (+ now (* max prev))) (reverse lst)))))
 
 @export
-@doc "shrinks the number of steady states."
+@doc "Shrinks the number of steady states. Built-in function of exploit-steady-states"
 (defun shrink-steady-states (steady-states)
   (let (acc)
     (maphash (lambda (key value)
