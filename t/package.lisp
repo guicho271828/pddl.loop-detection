@@ -135,20 +135,19 @@ This file is a part of pddl.loop-detection project.
   (setf steady-state-problem
 	(random-elt steady-state-problems)))
 
-(defun write-problem (problem &optional path)
-  (unless path
-    (setf path
-	  (merge-pathnames
-	   (format nil "~a/~a" (name (domain problem)) (name problem))
-	   (asdf:system-source-directory
-	    :pddl.loop-detection))))
-  (ensure-directories-exist path :verbose t)
-  (print path)
-  (with-open-file (s path
-		     :direction :output
-		     :if-exists :supersede
-		     :if-does-not-exist :create)
-    (print-pddl-object problem s)))
+(defun write-problem (problem &optional (basedir (asdf:system-source-directory
+						  :pddl.loop-detection)))
+  (let ((path 
+	 (merge-pathnames
+	  (format nil "~a/~a" (name (domain problem)) (name problem))
+	  basedir)))
+    (ensure-directories-exist path :verbose t)
+    (print path)
+    (with-open-file (s path
+		       :direction :output
+		       :if-exists :supersede
+		       :if-does-not-exist :create)
+      (print-pddl-object problem s))))
 
 ;; (test (write-problems)
 ;;   (mapc #'write-problem steady-state-problems))
