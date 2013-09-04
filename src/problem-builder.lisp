@@ -38,7 +38,7 @@
 			     unit-name 'STEADY-STATE ss)
 		:objects objects/bases ; warning!! their PROBLEM slot still refers
 		:init init/bases       ; warning!! to the old problem!
-		:goal '(and)
+		:goal (list 'and)
 		:metric metric)))
 
 	 ;; Add new objects, their corresponding initial states and
