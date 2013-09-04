@@ -53,7 +53,7 @@
 			(some (rcurry #'related-to atomic-state) bases)))
 		 (timed-state-state
 		  (timed-action-end
-		   (nth (1+ (nth position movements-indices-shrinked))
+		   (nth (nth position movements-indices-shrinked)
 			schedule)))))
 	   (%step0 base)
 	   (%step1 prototype-atomic-states base base-type-p)
