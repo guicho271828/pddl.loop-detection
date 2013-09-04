@@ -124,7 +124,13 @@ This file is a part of pddl.loop-detection project.
 	    (problem2 (lambda () (random-elt steady-state-problems))))
     (unless (eq problem1 problem2)
       (is-false (equal (goal problem1) (goal problem2)))))
-	
+  
+  (for-all ((problem1 (lambda () (random-elt steady-state-problems))))
+
+    (is-true (some (lambda (obj)
+		     (search "BASE0" (symbol-name (name obj))))
+		   (objects/const problem1))))
+  
 
   (setf steady-state-problem
 	(random-elt steady-state-problems)))

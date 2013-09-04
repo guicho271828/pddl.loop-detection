@@ -46,8 +46,6 @@
 	 (iter
 	   (for position in ss)
 	   (for base = (pddl-object :name (gen-base position) :type type))
-	   (for pbase previous base)
-	   (unless pbase (next-iteration))
 	   (for prototype-atomic-states = 
 		(remove-if-not
 		 (lambda (atomic-state)
@@ -60,6 +58,9 @@
 	   (%step0 base)
 	   (%step1 prototype-atomic-states base base-type-p)
 	   (%step2 base base-type-p movements-shrinked mutices position)
+	   
+	   (for pbase previous base)
+	   (unless pbase (next-iteration))
 	   (%step3 prototype-atomic-states pbase base-type-p)
 
 	   (finally
