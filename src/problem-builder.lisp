@@ -15,7 +15,7 @@
 				   movements-shrinked
 				   movements-indices-shrinked
 				   type)
-  (match unit-problem
+  (ematch unit-problem
     ((pddl-problem :name unit-name
 		   :domain *domain*
 		   :objects objs
