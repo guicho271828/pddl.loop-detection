@@ -21,7 +21,8 @@
 		 (:file :steady-state)
 		 (:file :simulator)
 		 (:file :ranker)
-		 (:file :problem-builder))))
+		 (:file :problem-builder)
+                 (:file :write-problem))))
   :description ""
   :long-description
   #.(with-open-file (stream (merge-pathnames
