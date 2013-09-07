@@ -126,13 +126,31 @@ This file is a part of pddl.loop-detection project.
     (unless (eq problem1 problem2)
       (is-false (equal (goal problem1) (goal problem2)))))
   
+  (let ((tmpdir (merge-pathnames (string-downcase (gensym "cell-assebly")) #p"/tmp/")))
 
-  ;; regression test : BASE0 is always included
-  (for-all ((problem1 (lambda () (random-elt steady-state-problems))))
-
-    (is-true (some (lambda (obj)
-		     (search "BASE0" (symbol-name (name obj))))
-		   (objects/const problem1))))
+    (for-all ((problem1 (lambda () (random-elt steady-state-problems))))
+      ;; regression test : domain is always bound
+      (is-true (domain problem1))
+      ;; regression test : BASE0 is always included
+      (is-true (some (lambda (obj)
+                       (search "BASE0" (symbol-name (name obj))))
+                     (objects/const problem1)))
+      
+      (let ((path (write-problem problem1 tmpdir)))
+        (let ((newprob (symbol-value
+                        (let ((*package* (find-package :pddl.instances)))
+                          (handler-bind ((found-in-dictionary
+                                          #'muffle-warning))
+                            (parse-file path))))))
+          (is (string= (symbol-name (name newprob))
+                       (symbol-name (name problem1))))
+          (is (set-equal (objects newprob)
+                         (objects problem1)
+                         :test #'string=
+                         :key (lambda (obj)
+                                (symbol-name (name obj))))))))
+    (inferior-shell:run
+     `(rm -rfv ,tmpdir)))
   
 
   (setf steady-state-problem

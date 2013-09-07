@@ -10,6 +10,7 @@
 	:guicho-red-black-tree
 	:iterate
 	:optima
+        :osicat
 	:annot.doc
 	:cl-syntax
         :pddl

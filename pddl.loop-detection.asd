@@ -11,7 +11,7 @@
   :version "0.1"
   :author "Masataro Asai"
   :license "LLGPL"
-  :depends-on (:pddl :pddl.scheduler :aflab1)
+  :depends-on (:pddl :pddl.scheduler :aflab1 :inferior-shell :osicat)
   :components ((:file :package :pathname "src/package")
 	       (:module "src"
 		:depends-on (:package)
