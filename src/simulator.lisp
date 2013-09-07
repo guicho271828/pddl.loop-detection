@@ -122,7 +122,7 @@
    (aref loops (1- (length ss)))))
 
 @export
-(defun loopable-steady-states (movements-shrinked steady-states &key (verbose t))
+(defun exploit-loopable-steady-states (movements-shrinked steady-states &key (verbose t))
   "Returns the list of solution path from start-of-loop to end-of-loop.
 start-of-loop is always the same list to the steady-state in the
 meaning of EQUALP."

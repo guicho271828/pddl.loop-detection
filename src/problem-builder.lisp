@@ -30,7 +30,7 @@
 		   (lambda (state)
 		     (if (some (rcurry #'related-to state) bases) t nil))))
 	    (init/bases (gethash nil init))
-	    (mutices (mutex-predicates (domain unit-problem)))
+	    (mutices (mutex-predicates *domain*))
 	    (ss (car loop-plan)))  ; steady-state start
        (let* ((*problem*
 	       (pddl-problem

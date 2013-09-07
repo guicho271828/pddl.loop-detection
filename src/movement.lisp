@@ -34,7 +34,7 @@ its precondition or the effect."
 	       (delete-list action))))))
 
 @export
-(defun extract-movements (object schedule domain)
+(defun %extract-movements (object schedule domain)
   (let (related indices)
     (multiple-value-setq
 	(related indices)
@@ -77,3 +77,10 @@ its precondition or the effect."
 	 (return (values
 		  shrinked-states
 		  shrinked-state-indices)))))
+
+
+@export
+(defun extract-movements (object schedule domain)
+  (multiple-value-call
+      #'shrink-movements
+      (%extract-movements object schedule domain)))

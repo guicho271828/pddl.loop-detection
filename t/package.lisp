@@ -56,7 +56,7 @@ This file is a part of pddl.loop-detection project.
   (finishes
     (multiple-value-setq
 	(movements movements-indices)
-      (extract-movements 'b-0 schedule cell-assembly))
+      (%extract-movements 'b-0 schedule cell-assembly))
     
     (multiple-value-setq
 	(movements-shrinked movements-indices-shrinked)
@@ -98,9 +98,9 @@ This file is a part of pddl.loop-detection project.
   (format t "~%testing loopable-steady-states. It takes time so please wait...~2%")
   (finishes
     (time (setf loopable-steady-states
-		(loopable-steady-states
-		   movements-shrinked
-		   steady-states :verbose nil)))))
+		(exploit-loopable-steady-states
+                 movements-shrinked
+                 steady-states :verbose nil)))))
 
 (defparameter prob
   cell-assembly-model2a-1)
