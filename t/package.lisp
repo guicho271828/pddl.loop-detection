@@ -119,12 +119,15 @@ This file is a part of pddl.loop-detection project.
 		     (build-steady-state-problem
 		      prob loop-plan schedule
 		      movements-shrinked movements-indices-shrinked base-type))))))
-
+  
+  ;; regression test : the conses are always fresh
   (for-all ((problem1 (lambda () (random-elt steady-state-problems)))
 	    (problem2 (lambda () (random-elt steady-state-problems))))
     (unless (eq problem1 problem2)
       (is-false (equal (goal problem1) (goal problem2)))))
   
+
+  ;; regression test : BASE0 is always included
   (for-all ((problem1 (lambda () (random-elt steady-state-problems))))
 
     (is-true (some (lambda (obj)
