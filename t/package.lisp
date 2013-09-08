@@ -68,15 +68,16 @@ This file is a part of pddl.loop-detection project.
   (finishes
     (setf steady-states 
 	  (exploit-steady-states movements-shrinked)))
-  (let ((*num-trials* 30))
-    (for-all ((ss (lambda () (random-elt steady-states))))
-      (when (>= (length ss) 2)
-	(map-combinations
-	 (lambda (list)
-	   (is (null (intersection (first list) (second list)))))
-	 (mapcar (rcurry #'nth movements-shrinked) ss)
-	 :length 2))
-      (is (= 0 (first ss))))))
+  (for-all ((ss (lambda () (random-elt steady-states))))
+    (when (>= (length ss) 2)
+      (map-combinations
+       (lambda (list)
+         (is (null (intersection
+                    (first list) (second list)
+                    :test #'eqstate))))
+       (mapcar (rcurry #'nth movements-shrinked) ss)
+       :length 2))
+    (is (= 0 (first ss)))))
 
 (test (search-loop-path)
   (time (search-loop-path
