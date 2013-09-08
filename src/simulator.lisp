@@ -117,54 +117,75 @@
   "Returns the list of solution path from start-of-loop to end-of-loop.
 start-of-loop is always the same list to the steady-state in the
 meaning of EQUALP."
-  (iter (with loops = (make-array (length movements-shrinked) :initial-element nil))
-	(with max = (length steady-states))
-	(with duplicated-count = 0)
-	(with total-count = 0)
-	(for i from 0)
-	(for ss in steady-states)
-	(case verbose
-	  ((2 t)       (format t "~%~a/~a: " i max))
-	  ((1 :modest) (when (zerop (mod i 60)) (terpri))))
-	(if-let ((duplicated (%check-duplicate ss loops)))
-	  (progn
-	    (incf duplicated-count)
-	    (incf total-count)
-	    (case verbose
-	      ((2 t)       (%report-duplication ss duplicated))
-	      ((1 :modest) (write-char #\D))))
-	  (if-let ((result (search-loop-path
-			    movements-shrinked ss
-			    :verbose (case verbose
-				       ((2 t) t)
-				       ((1 :modest) nil)
-				       (otherwise nil)))))
-	    (let ((pos (1- (length ss))))
-	      (case verbose
-		((2 t)       (format t " ...success!"))
-		((1 :modest) (write-char #\.)))
-	      (symbol-macrolet ((bucket (aref loops pos)))
-		(incf total-count)
-		(setf bucket
-		      (cons result
-			    (remove-if (lambda (other-path)
-					 (when (find (first other-path) result
-						     :test #'equalp)
-					   (incf duplicated-count)
-					   t))
-				       bucket)))))
-	    (progn 
-	      (case verbose
-		((2 t)       (format t " ...failed."))
-		((1 :modest) (write-char #\F)))
-	      (collect ss into invalid-loops))))
-	(finally
-	 (format t "~%duplicated loops detected --- ~a/~a" duplicated-count max)
-	 (format t "~%valid loops in total --- ~a/~a" total-count max)
-	 (format t "~%valid loops w/o duplicated ones --- ~a/~a"
-		 (- total-count duplicated-count) max)
-	 ;; (format t "~%these loops were invalid:~%~w" invalid-loops)
-	 
-	 (return
-	   (values (reduce #'append loops)
-		   invalid-loops)))))
+  
+  (case verbose
+    ((2 t)       (%verbose movements-shrinked steady-states))
+    ((1 :modest) (%modest movements-shrinked steady-states))
+    (otherwise   (%none movements-shrinked steady-states))))
+
+(macrolet ((%loop-verbosity (before
+                             after-success
+                             after-failure
+                             search-argument
+                             if-duplicated)
+             `(iter (with loops = (make-array (length movements-shrinked)
+                                              :initial-element nil))
+                    (with max = (length steady-states))
+                    (with dup-count = 0)
+                    (with total-count = 0)
+                    (for i from 0)
+                    (for ss in steady-states)
+                    ,before
+                    (if-let ((duplicated (%check-duplicate ss loops)))
+                      (progn
+                        (incf dup-count)
+                        (incf total-count)
+                        ,if-duplicated)
+                      (if-let ((result (search-loop-path
+                                        movements-shrinked ss
+                                        :verbose ,search-argument)))
+                        (let ((pos (1- (length ss))))
+                          ,after-success
+                          (incf total-count)
+                          (symbol-macrolet ((bucket (aref loops pos)))
+                            (setf bucket
+                                  (cons result
+                                        (remove-if
+                                         (lambda (other-path)
+                                           (when (find (first other-path) result
+                                                       :test #'equalp)
+                                             (incf dup-count)
+                                             t))
+                                         bucket)))))
+                        (progn 
+                          ,after-failure
+                          (collect ss into invalid-loops))))
+                    (finally
+                     (format t "~%duplicated loops detected --- ~a/~a" dup-count max)
+                     (format t "~%valid loops in total --- ~a/~a" total-count max)
+                     (format t "~%valid loops w/o duplicated ones --- ~a/~a"
+                             (- total-count dup-count) max)
+                     
+                     (return
+                       (values (reduce #'append loops)
+                               invalid-loops))))))
+  
+  (defun %verbose (movements-shrinked steady-states)
+    (%loop-verbosity
+     (format t "~%~a/~a: " i max)
+     (format t " ...success!")
+     (format t " ...failed.")
+     t
+     (%report-duplication ss duplicated)))
+
+  (defun %modest (movements-shrinked steady-states)
+    (%loop-verbosity
+     (when (zerop (mod i 60)) (terpri))
+     (write-char #\.)
+     (write-char #\F)
+     nil
+     (write-char #\D)))
+
+  (defun %none (movements-shrinked steady-states)
+    (%loop-verbosity nil nil nil nil nil)))
+
