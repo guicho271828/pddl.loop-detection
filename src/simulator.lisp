@@ -54,7 +54,6 @@
 
 @export
 (defun search-loop-path (movements-shrinked steady-state &key (verbose t))
-  (remhash movements-shrinked *movements-hash*)
   (handler-return ((path-not-found (lambda (c)
 				     @ignore c
 				     nil)))
@@ -70,6 +69,7 @@
 		   :current-state steady-state)))
       (setf (goal goal) goal)
       (let ((last (a*-search start goal :verbose verbose)))
+        (remhash movements-shrinked *movements-hash*)
 	(iter (for node first last then (parent node))
 	      (while node)
 	      (collect (current-state node) at beginning))))))
