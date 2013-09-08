@@ -136,6 +136,19 @@ the number of bases.
           "~w is not searched because it had appeared in the other loop."
           ss))
 
+(defun %report-results (max fdup-count pdup-count total-count)
+  (format t
+          "~%~1,80,80,'-a~%~{~80@<~40@a | ~10:a~>~%~}~1,80,80,'-a"
+          "-"
+          (list "All steady-states" max
+                "Duplicated loops forward-detected" fdup-count
+                "Duplicated loops post-detected" pdup-count
+                "Valid loops in total" total-count
+                "Valid loops w/o duplicated ones" (- total-count
+                                                     fdup-count
+                                                     pdup-count))
+          "-"))
+
 (defun make-buckets (n)
   (make-array n :initial-element nil))
 
@@ -143,8 +156,7 @@ the number of bases.
   (some
    (lambda (loop-path)
      (or (find ss loop-path :test #'equalp)
-         (find end loop-path :test #'equalp)
-         ))
+         (find end loop-path :test #'equalp)))
    bucket))
 
 (defun %post-duplication-check (buckets)
@@ -197,11 +209,10 @@ meaning of EQUALP."
                     (for i from 0)
                     (for ss in steady-states)
                     (for bases = (1- (length ss)))
-                    (for bucket = (aref buckets bases))
                     ,before
                     (if-let ((duplicated
                               (%forward-duplication-check
-                               ss (make-eol ss m-num) bucket)))
+                               ss (make-eol ss m-num) (aref buckets bases))))
                       (progn
                         (incf fdup-count)
                         (incf total-count)
@@ -219,17 +230,7 @@ meaning of EQUALP."
                     (finally
                      (multiple-value-bind (result pdup-count)
                          (%post-duplication-check buckets)
-                       (format t
-                               "~%~1,80,80,'-a~%~{~80@<~40@a | ~10:a~>~%~}~1,80,80,'-a"
-                               "-"
-                               (list "All steady-states" max
-                                     "Duplicated loops forward-detected" fdup-count
-                                     "Duplicated loops post-detected" pdup-count
-                                     "Valid loops in total" total-count
-                                     "Valid loops w/o duplicated ones" (- total-count
-                                                                          fdup-count
-                                                                          pdup-count))
-                               "-")
+                       (%report-results max fdup-count pdup-count total-count)
                        (return
                          (values (reduce #'append result) invalid-loops)))))))
   
