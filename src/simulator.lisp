@@ -65,16 +65,23 @@
               (while node)
               (collect (current-state node) at beginning))))))
 
+(declaim (ftype (function (list list state-node fixnum) boolean) %make-state-node))
 (defun %make-state-node (movements-shrinked current-state goal n)
+  (declare (optimize (speed 3) (safety 0) (debug 0)))
   (make-instance
    'state-node
    :goal goal
    :movements movements-shrinked
-   :current-state (substitute (1+ n) n current-state)))
+   :current-state (substitute (the fixnum (1+ n)) n current-state)))
 
+
+(declaim (ftype (function (fixnum fixnum list list) boolean) movable)) 
 (defun movable (n goal-n used movements)
+  (declare (optimize (speed 3) (safety 0) (debug 0)))
   (let ((n2 (1+ n))
 	(carry-out-index (length movements)))
+    @type fixnum carry-out-index
+    @type fixnum n2
     (and ; include n if
      (not (= n goal-n)) ; the goal is not achieved yet
      (< n carry-out-index) ; n is not already the carry-out.
@@ -136,17 +143,17 @@ the number of bases.
           "~w is not searched because it had appeared in the other loop."
           ss))
 
-(defun %report-results (max fdup-count pdup-count total-count)
+(defun %report-results (max fdup-count pdup-count true-count)
   (format t
           "~%~1,80,80,'-a~%~{~80@<~40@a | ~10:a~>~%~}~1,80,80,'-a"
           "-"
           (list "All steady-states" max
                 "Duplicated loops forward-detected" fdup-count
                 "Duplicated loops post-detected" pdup-count
-                "Valid loops in total" total-count
-                "Valid loops w/o duplicated ones" (- total-count
-                                                     fdup-count
-                                                     pdup-count))
+                "Valid loops in total" (+ true-count
+                                          fdup-count
+                                          pdup-count)
+                "Valid loops w/o duplicated ones" true-count)
           "-"))
 
 (defun make-buckets (n)
@@ -160,31 +167,14 @@ the number of bases.
    bucket))
 
 (defun %post-duplication-check (buckets)
-  (let ((count 0))
-    (values
-     (map 'vector
-          (lambda (bucket)
-            (multiple-value-bind (result dup-count)
-                (%post-duplication-check/bucket bucket)
-              (incf count dup-count)
-              result))
-          buckets)
-     count)))
-
+  (map 'vector #'%post-duplication-check/bucket buckets))
 (defun %post-duplication-check/bucket (bucket)
-  (let ((shrinked (remove-duplicates bucket :test #'%loop-equal)))
-    (values shrinked
-            (- (length bucket)
-               (length shrinked)))))
-
+  (remove-duplicates bucket :test #'%loop-equal))
 (defun %loop-equal (path1 path2)
   (or (find (first-elt path1) path2 :test #'equalp)
       (find (last-elt path1) path2 :test #'equalp)
       (find (first-elt path2) path1 :test #'equalp)
-      (find (last-elt path2) path1 :test #'equalp)
-      ))
-
-(setf lparallel:*kernel* (make-kernel (get-core-num)))
+      (find (last-elt path2) path1 :test #'equalp)))
 
 @export
 (defun exploit-loopable-steady-states (movements-shrinked steady-states
@@ -198,62 +188,72 @@ meaning of EQUALP."
     ((1 :modest) (%modest movements-shrinked steady-states))
     (otherwise   (%none movements-shrinked steady-states))))
 
+(defun %merge-buckets (buckets1 buckets2)
+  (map 'vector
+       (lambda (bucket1 bucket2)
+         (union bucket1 bucket2 :test #'%loop-equal))
+       buckets1 buckets2))
+  
 (macrolet ((%loop-verbosity (before
                              after-success
                              after-failure
-                             search-argument
-                             if-duplicated)
-             `(let ((m-num (length moves))
-                    (buckets (make-buckets m-num))
-                    (max (length steady-states))
-                    (fdup-count 0)
-                    (total-count 0))
-                (iter 
-                  (for ss in steady-states)
-                  (for bases = (1- (length ss)))
-                  ,before
-                  (if-let ((duplicated
-                            (%forward-duplication-check
-                             ss (make-eol ss m-num) (aref buckets bases))))
-                    (progn
-                      (incf fdup-count)
-                      (incf total-count)
-                      ,if-duplicated)
-                    (if-let ((result
-                              (search-loop-path
-                               moves ss :verbose ,search-argument)))
-                      (progn
-                        ,after-success
-                        (incf total-count)
-                        (push result (aref buckets bases)))
-                      (progn 
-                        ,after-failure
-                        (collect ss into invalid-loops))))
-                  (finally
-                   (multiple-value-bind (result pdup-count)
-                       (%post-duplication-check buckets)
-                     (%report-results max fdup-count pdup-count total-count)
-                     (return
-                       (values (reduce #'append result) invalid-loops))))))))
+                             search-argument)
+             
+             `(let* ((m-num (length moves))
+                     (max (length steady-states))
+                     (buckets (make-buckets m-num))
+                     (bucket-locks (make-array m-num)))
+                @ignorable max
+                (dotimes (j m-num)
+                  (setf (aref bucket-locks j) (make-lock)))
+                (flet ((%exploit/thread (ss)
+                         (let ((bases (1- (length ss))))
+                           ,before
+                           (unless (%forward-duplication-check
+                                    ss
+                                    (make-eol ss m-num)
+                                    (aref buckets bases))
+                             (if-let ((result
+                                       (search-loop-path
+                                        moves ss :verbose ,search-argument)))
+                               (progn
+                                 ,after-success
+                                 (with-lock-held ((aref bucket-locks bases))
+                                   (push result (aref buckets bases))))
+                               ,after-failure)))))
+                  (pmap nil
+                        #'%exploit/thread
+                        (shuffle (coerce steady-states 'vector)))
+                  (reduce #'append (%post-duplication-check buckets))))))
+  
   
   (defun %verbose (moves steady-states)
-    (let ((i 0))
+    (let ((i 0) (i-lock (make-lock "i")))
       (%loop-verbosity
-       (progn (format t "~%~a/~a: " i max) (incf i))
-       (format t " ...success!")
-       (format t " ...failed.")
-       t
-       (%report-duplication ss duplicated))))
+       (with-lock-held (i-lock)
+         (incf i)
+         (with-lock-held (*print-lock*)
+           (format *shared-output* "~%~a/~a: " i max)))
+       (with-lock-held (*print-lock*)
+         (format *shared-output* " ...success!"))
+       (with-lock-held (*print-lock*)
+         (format *shared-output* " ...failed."))
+       t)))
 
   (defun %modest (moves steady-states)
-    (let ((i 0))
+    (let ((i 0) (i-lock (make-lock "i")))
       (%loop-verbosity
-       (progn (when (zerop (mod i 60)) (terpri)) (incf i))
-       (write-char #\.)
-       (write-char #\F)
-       nil
-       (write-char #\D))))
+       (with-lock-held (i-lock)
+         (incf i)
+         (when (zerop (mod i 60))
+           (with-lock-held (*print-lock*)
+             (terpri *shared-output*))))
+       (with-lock-held (*print-lock*)
+         (write-char #\. *shared-output*))
+       (with-lock-held (*print-lock*)
+         (write-char #\F *shared-output*))
+       nil)))
 
   (defun %none (moves steady-states)
-    (%loop-verbosity nil nil nil nil nil)))
+    (%loop-verbosity nil nil nil nil)))
 
