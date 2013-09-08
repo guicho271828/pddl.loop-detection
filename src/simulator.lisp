@@ -8,28 +8,19 @@
    (movements :initarg :movements :reader movements)
    (complementary-edge-class :initform 'transition)))
 
-(defvar *movements-hash*
-  (make-hash-table :test #'equalp))
+(defvar *state-hash*)
 (defmethod allocate-instance :around
     ((class (eql (find-class 'state-node)))
-     &key movements current-state goal)
-  (let ((state-hash
-	 (or (gethash movements *movements-hash*)
-	     (setf (gethash movements *movements-hash*)
-		   (make-hash-table :test #'equalp)))))
-    ;; (when (gethash current-state state-hash)
-    ;;   (format t "allocation stopped!"))
-    (if-let ((found (gethash current-state state-hash)))
-      (progn (setf (goal found) goal)
-	     found)
-      (setf (gethash current-state state-hash)
-	    (call-next-method)))))
+     &key current-state goal)
+  (or (gethash current-state *state-hash*)
+      (let ((result (call-next-method)))
+        (setf (gethash current-state *state-hash*) result)
+        result)))
 
 (defmethod print-object ((n state-node) s)
   (print-unreadable-object (n s :type t)
     (with-slots (current-state) n
       (format s "~a :cost ~a" current-state (cost n)))))
-
 
 @export
 (defclass transition (searchable-edge)
@@ -57,22 +48,22 @@
   (handler-return ((path-not-found (lambda (c)
 				     @ignore c
 				     nil)))
-    (let* ((goal (make-instance
-		  'state-node
-		  :movements movements-shrinked
-		  :current-state (make-eol steady-state
-					   (length movements-shrinked))))
-	   (start (make-instance
-		   'state-node
-		   :movements movements-shrinked
-		   :goal goal
-		   :current-state steady-state)))
+    (let* ((*state-hash* (make-hash-table :test #'equalp))
+           (goal (make-instance
+                  'state-node
+                  :movements movements-shrinked
+                  :current-state (make-eol steady-state
+                                           (length movements-shrinked))))
+           (start (make-instance
+                   'state-node
+                   :movements movements-shrinked
+                   :goal goal
+                   :current-state steady-state)))
       (setf (goal goal) goal)
       (let ((last (a*-search start goal :verbose verbose)))
-        (remhash movements-shrinked *movements-hash*)
-	(iter (for node first last then (parent node))
-	      (while node)
-	      (collect (current-state node) at beginning))))))
+        (iter (for node first last then (parent node))
+              (while node)
+              (collect (current-state node) at beginning))))))
 
 (defun %make-state-node (movements-shrinked current-state goal n)
   (make-instance
