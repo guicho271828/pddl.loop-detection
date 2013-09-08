@@ -12,9 +12,11 @@
   :author "Masataro Asai"
   :license "LLGPL"
   :depends-on (:pddl :pddl.scheduler
+                     :guicho-utilities.threading
                      :aflab1
                      :inferior-shell
                      :osicat
+                     :bordeaux-threads
                      :lparallel)
   :components ((:file :package :pathname "src/package")
 	       (:module "src"

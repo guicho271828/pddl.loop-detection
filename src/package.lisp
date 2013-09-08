@@ -6,7 +6,8 @@
 (defpackage pddl.loop-detection
   (:use :cl
 	:guicho-utilities
-	:guicho-a*
+        :guicho-utilities.threading
+        :guicho-a*
 	:guicho-red-black-tree
 	:iterate
 	:optima
@@ -17,6 +18,7 @@
 	:pddl.scheduler
 	:pddl.plan-optimizer
 	:alexandria
+        :bordeaux-threads
         :lparallel)
   (:shadowing-import-from
    :guicho-a* :cost)            ;resolve conflict with pddl:cost
