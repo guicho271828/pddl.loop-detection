@@ -16,7 +16,8 @@
         :pddl
 	:pddl.scheduler
 	:pddl.plan-optimizer
-	:alexandria)
+	:alexandria
+        :lparallel)
   (:shadowing-import-from
    :guicho-a* :cost)            ;resolve conflict with pddl:cost
   (:shadowing-import-from

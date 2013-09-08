@@ -184,6 +184,8 @@ the number of bases.
       (find (last-elt path2) path1 :test #'equalp)
       ))
 
+(setf lparallel:*kernel* (make-kernel (get-core-num)))
+
 @export
 (defun exploit-loopable-steady-states (movements-shrinked steady-states
                                        &key (verbose t))
@@ -201,54 +203,56 @@ meaning of EQUALP."
                              after-failure
                              search-argument
                              if-duplicated)
-             `(iter (with m-num = (length moves))
-                    (with buckets = (make-buckets m-num))
-                    (with max = (length steady-states))
-                    (with fdup-count = 0)
-                    (with total-count = 0)
-                    (for i from 0)
-                    (for ss in steady-states)
-                    (for bases = (1- (length ss)))
-                    ,before
-                    (if-let ((duplicated
-                              (%forward-duplication-check
-                               ss (make-eol ss m-num) (aref buckets bases))))
+             `(let ((m-num (length moves))
+                    (buckets (make-buckets m-num))
+                    (max (length steady-states))
+                    (fdup-count 0)
+                    (total-count 0))
+                (iter 
+                  (for ss in steady-states)
+                  (for bases = (1- (length ss)))
+                  ,before
+                  (if-let ((duplicated
+                            (%forward-duplication-check
+                             ss (make-eol ss m-num) (aref buckets bases))))
+                    (progn
+                      (incf fdup-count)
+                      (incf total-count)
+                      ,if-duplicated)
+                    (if-let ((result
+                              (search-loop-path
+                               moves ss :verbose ,search-argument)))
                       (progn
-                        (incf fdup-count)
+                        ,after-success
                         (incf total-count)
-                        ,if-duplicated)
-                      (if-let ((result
-                                (search-loop-path
-                                 moves ss :verbose ,search-argument)))
-                        (progn
-                          ,after-success
-                          (incf total-count)
-                          (push result (aref buckets bases)))
-                        (progn 
-                          ,after-failure
-                          (collect ss into invalid-loops))))
-                    (finally
-                     (multiple-value-bind (result pdup-count)
-                         (%post-duplication-check buckets)
-                       (%report-results max fdup-count pdup-count total-count)
-                       (return
-                         (values (reduce #'append result) invalid-loops)))))))
+                        (push result (aref buckets bases)))
+                      (progn 
+                        ,after-failure
+                        (collect ss into invalid-loops))))
+                  (finally
+                   (multiple-value-bind (result pdup-count)
+                       (%post-duplication-check buckets)
+                     (%report-results max fdup-count pdup-count total-count)
+                     (return
+                       (values (reduce #'append result) invalid-loops))))))))
   
   (defun %verbose (moves steady-states)
-    (%loop-verbosity
-     (format t "~%~a/~a: " i max)
-     (format t " ...success!")
-     (format t " ...failed.")
-     t
-     (%report-duplication ss duplicated)))
+    (let ((i 0))
+      (%loop-verbosity
+       (progn (format t "~%~a/~a: " i max) (incf i))
+       (format t " ...success!")
+       (format t " ...failed.")
+       t
+       (%report-duplication ss duplicated))))
 
   (defun %modest (moves steady-states)
-    (%loop-verbosity
-     (when (zerop (mod i 60)) (terpri))
-     (write-char #\.)
-     (write-char #\F)
-     nil
-     (write-char #\D)))
+    (let ((i 0))
+      (%loop-verbosity
+       (progn (when (zerop (mod i 60)) (terpri)) (incf i))
+       (write-char #\.)
+       (write-char #\F)
+       nil
+       (write-char #\D))))
 
   (defun %none (moves steady-states)
     (%loop-verbosity nil nil nil nil nil)))
