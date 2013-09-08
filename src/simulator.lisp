@@ -102,18 +102,79 @@
 	     (when (movable n goal-n used movements)
 	       (collect n)))))))
 
+#|
+
+steady-states, or ss: list of positions of bases like
+
+ (0 3 5 16 19) ; the index of mutex aquired by base 0, 1, 2, 3, 4 
+
+loop-path: list of steady-states, like
+
+ ((0 3 5 16 19)
+  (0 3 5 17 19)
+  (0 3 6 17 19) ...)
+
+bucket: list of loop-pathes. In each loop-path,
+  all steady-states have the same number of bases.
+
+  (((0 3 5 16 19) ; loop path 1
+    (0 3 5 17 19) ; loop path 1
+    (0 3 6 17 19) ...)  ; loop path 1
+   ((0 4 5 16 19) ; loop path 2
+    (0 4 5 17 19) ; loop path 2
+    (0 4 6 17 19) ...)  ; loop path 2
+     ... )
+
+buckets: array of buckets. Each index corresponds to
+the number of bases.
+
+|#
+
 (defun %report-duplication (ss duplicated)
   @ignore duplicated
-  (format t "~w is not searched because it had appeared in the other loop." ss))
+  (format t 
+          "~w is not searched because it had appeared in the other loop."
+          ss))
 
-(defun %check-duplicate (ss loops)
+(defun make-buckets (n)
+  (make-array n :initial-element nil))
+
+(defun %forward-duplication-check (ss end bucket)
   (some
-   (lambda (path)
-     (member ss path :test #'equalp))
-   (aref loops (1- (length ss)))))
+   (lambda (loop-path)
+     (or (find ss loop-path :test #'equalp)
+         (find end loop-path :test #'equalp)
+         ))
+   bucket))
+
+(defun %post-duplication-check (buckets)
+  (let ((count 0))
+    (values
+     (map 'vector
+          (lambda (bucket)
+            (multiple-value-bind (result dup-count)
+                (%post-duplication-check/bucket bucket)
+              (incf count dup-count)
+              result))
+          buckets)
+     count)))
+
+(defun %post-duplication-check/bucket (bucket)
+  (let ((shrinked (remove-duplicates bucket :test #'%loop-equal)))
+    (values shrinked
+            (- (length bucket)
+               (length shrinked)))))
+
+(defun %loop-equal (path1 path2)
+  (or (find (first-elt path1) path2 :test #'equalp)
+      (find (last-elt path1) path2 :test #'equalp)
+      (find (first-elt path2) path1 :test #'equalp)
+      (find (last-elt path2) path1 :test #'equalp)
+      ))
 
 @export
-(defun exploit-loopable-steady-states (movements-shrinked steady-states &key (verbose t))
+(defun exploit-loopable-steady-states (movements-shrinked steady-states
+                                       &key (verbose t))
   "Returns the list of solution path from start-of-loop to end-of-loop.
 start-of-loop is always the same list to the steady-state in the
 meaning of EQUALP."
@@ -128,49 +189,51 @@ meaning of EQUALP."
                              after-failure
                              search-argument
                              if-duplicated)
-             `(iter (with loops = (make-array (length movements-shrinked)
-                                              :initial-element nil))
+             `(iter (with m-num = (length moves))
+                    (with buckets = (make-buckets m-num))
                     (with max = (length steady-states))
-                    (with dup-count = 0)
+                    (with fdup-count = 0)
                     (with total-count = 0)
                     (for i from 0)
                     (for ss in steady-states)
+                    (for bases = (1- (length ss)))
+                    (for bucket = (aref buckets bases))
                     ,before
-                    (if-let ((duplicated (%check-duplicate ss loops)))
+                    (if-let ((duplicated
+                              (%forward-duplication-check
+                               ss (make-eol ss m-num) bucket)))
                       (progn
-                        (incf dup-count)
+                        (incf fdup-count)
                         (incf total-count)
                         ,if-duplicated)
-                      (if-let ((result (search-loop-path
-                                        movements-shrinked ss
-                                        :verbose ,search-argument)))
-                        (let ((pos (1- (length ss))))
+                      (if-let ((result
+                                (search-loop-path
+                                 moves ss :verbose ,search-argument)))
+                        (progn
                           ,after-success
                           (incf total-count)
-                          (symbol-macrolet ((bucket (aref loops pos)))
-                            (setf bucket
-                                  (cons result
-                                        (remove-if
-                                         (lambda (other-path)
-                                           (when (find (first other-path) result
-                                                       :test #'equalp)
-                                             (incf dup-count)
-                                             t))
-                                         bucket)))))
+                          (push result (aref buckets bases)))
                         (progn 
                           ,after-failure
                           (collect ss into invalid-loops))))
                     (finally
-                     (format t "~%duplicated loops detected --- ~a/~a" dup-count max)
-                     (format t "~%valid loops in total --- ~a/~a" total-count max)
-                     (format t "~%valid loops w/o duplicated ones --- ~a/~a"
-                             (- total-count dup-count) max)
-                     
-                     (return
-                       (values (reduce #'append loops)
-                               invalid-loops))))))
+                     (multiple-value-bind (result pdup-count)
+                         (%post-duplication-check buckets)
+                       (format t
+                               "~%~1,80,80,'-a~%~{~80@<~40@a | ~10:a~>~%~}~1,80,80,'-a"
+                               "-"
+                               (list "All steady-states" max
+                                     "Duplicated loops forward-detected" fdup-count
+                                     "Duplicated loops post-detected" pdup-count
+                                     "Valid loops in total" total-count
+                                     "Valid loops w/o duplicated ones" (- total-count
+                                                                          fdup-count
+                                                                          pdup-count))
+                               "-")
+                       (return
+                         (values (reduce #'append result) invalid-loops)))))))
   
-  (defun %verbose (movements-shrinked steady-states)
+  (defun %verbose (moves steady-states)
     (%loop-verbosity
      (format t "~%~a/~a: " i max)
      (format t " ...success!")
@@ -178,7 +241,7 @@ meaning of EQUALP."
      t
      (%report-duplication ss duplicated)))
 
-  (defun %modest (movements-shrinked steady-states)
+  (defun %modest (moves steady-states)
     (%loop-verbosity
      (when (zerop (mod i 60)) (terpri))
      (write-char #\.)
@@ -186,6 +249,6 @@ meaning of EQUALP."
      nil
      (write-char #\D)))
 
-  (defun %none (movements-shrinked steady-states)
+  (defun %none (moves steady-states)
     (%loop-verbosity nil nil nil nil nil)))
 
