@@ -224,7 +224,7 @@ meaning of EQUALP."
                   (pmap nil
                         #'%exploit/thread
                         (shuffle (coerce steady-states 'vector)))
-                  (reduce #'append (%post-duplication-check buckets))))))
+                  (reduce #'append (%post-duplication-check buckets) :from-end t)))))
   
   
   (defun %verbose (moves steady-states)
