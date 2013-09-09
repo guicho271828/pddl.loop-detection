@@ -137,12 +137,6 @@ the number of bases.
 
 |#
 
-(defun %report-duplication (ss duplicated)
-  @ignore duplicated
-  (format t 
-          "~w is not searched because it had appeared in the other loop."
-          ss))
-
 (defun %report-results (max fdup-count pdup-count true-count)
   (format t
           "~%~1,80,80,'-a~%~{~80@<~40@a | ~10:a~>~%~}~1,80,80,'-a"
@@ -238,6 +232,10 @@ meaning of EQUALP."
          (format *shared-output* " ...success!"))
        (with-lock-held (*print-lock*)
          (format *shared-output* " ...failed."))
+       (with-lock-held (*print-lock*)
+         (format t 
+          "~w is not searched because it had appeared in the other loop."
+          ss))
        t)))
 
   (defun %modest (moves steady-states)
@@ -252,8 +250,10 @@ meaning of EQUALP."
          (write-char #\. *shared-output*))
        (with-lock-held (*print-lock*)
          (write-char #\F *shared-output*))
+       (with-lock-held (*print-lock*)
+         (write-char #\D *shared-output*))
        nil)))
 
   (defun %none (moves steady-states)
-    (%loop-verbosity nil nil nil nil)))
+    (%loop-verbosity nil nil nil nil nil)))
 
