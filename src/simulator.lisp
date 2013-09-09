@@ -187,34 +187,59 @@ meaning of EQUALP."
        (lambda (bucket1 bucket2)
          (union bucket1 bucket2 :test #'%loop-equal))
        buckets1 buckets2))
+
+(defun %constraint< (ss1 ss2)
+  (subsetp ss1 ss2 :test #'=))
+
+(defun %fast-failure-check (ss bucket)
+  (some (rcurry #'%constraint< ss) bucket))
   
 (macrolet ((%loop-verbosity (before
                              after-success
                              after-failure
+                             after-duplication
                              search-argument)
              
              `(let* ((m-num (length moves))
                      (max (length steady-states))
                      (buckets (make-buckets m-num))
-                     (bucket-locks (make-array m-num)))
+                     (bucket-locks (make-array m-num))
+                     (failure-buckets (make-buckets m-num))
+                     (failure-buckets-locks (make-buckets m-num)))
                 @ignorable max
                 (dotimes (j m-num)
+                  (setf (aref failure-buckets-locks j) (make-lock))
                   (setf (aref bucket-locks j) (make-lock)))
                 (flet ((%exploit/thread (ss)
                          (let ((bases (1- (length ss))))
                            ,before
-                           (unless (%forward-duplication-check
-                                    ss
-                                    (make-eol ss m-num)
-                                    (aref buckets bases))
-                             (if-let ((result
-                                       (search-loop-path
-                                        moves ss :verbose ,search-argument)))
-                               (progn
-                                 ,after-success
-                                 (with-lock-held ((aref bucket-locks bases))
-                                   (push result (aref buckets bases))))
-                               ,after-failure)))))
+                           (cond
+                             ((%forward-duplication-check ss
+                                                          (make-eol ss m-num)
+                                                          (aref buckets bases))
+                              ,after-duplication)
+                             ((iter (for bucket in-vector failure-buckets below bases)
+                                    (thereis (%fast-failure-check ss bucket)))
+                              ,after-failure)
+                             (t
+                              (if-let ((result
+                                        (search-loop-path
+                                         moves ss :verbose ,search-argument)))
+                                (progn
+                                  ,after-success
+                                  (with-lock-held ((aref bucket-locks bases))
+                                    (push result (aref buckets bases))))
+                                (progn
+                                  ,after-failure
+                                  (with-lock-held ((aref failure-buckets-locks bases))
+                                    (push ss (aref failure-buckets bases)))
+                                  (iter (for bucket
+                                             in-vector failure-buckets
+                                             with-index j above bases)
+                                        (with-lock-held ((aref failure-buckets-locks j))
+                                          (setf (aref failure-buckets j)
+                                                (remove-if (curry #'%constraint< ss)
+                                                           (aref failure-buckets j))))))))))))
                   (pmap nil
                         #'%exploit/thread
                         (shuffle (coerce steady-states 'vector)))
