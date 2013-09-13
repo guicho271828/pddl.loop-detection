@@ -26,21 +26,24 @@ in a owner-mutex relationship."
    (lambda (a)
      (mapcar
       (curry #'%validate-mutex-among-actions
-	     (remove a (actions domain)))
+	     (actions domain))
       (mutices-in a)))
    (actions domain)))
 
 @export
-(defun %validate-mutex-among-actions (rest-actions mutex)
+(defun %validate-mutex-among-actions (actions mutex)
   (ematch mutex
     ((list _ _ _ :positive _)
-     (dolist (a2 rest-actions)
-       (setf mutex (%validate-mutex mutex (delete-list a2)))
-       (setf mutex (%validate-mutex mutex (add-list a2)))))
+     (dolist (a2 actions)
+       (setf mutex (%validate mutex (delete-list a2) (delete-list a2)))
+       (setf mutex (%validate mutex (add-list a2) (add-list a2)))
+       (setf mutex (%validate mutex (add-list a2) (negative-preconditions a2)))
+       ))
     ((list _ _ _ :negative _)
-     (dolist (a2 rest-actions)
-       (setf mutex (%validate-release mutex (add-list a2) (delete-list a2)))
-       (setf mutex (%validate-release mutex (delete-list a2) (add-list a2))))))
+     (dolist (a2 actions)
+       (setf mutex (%validate mutex (add-list a2) (delete-list a2)))
+       (setf mutex (%validate mutex (delete-list a2) (add-list a2)))
+       (setf mutex (%validate mutex (add-list a2) (positive-preconditions a2))))))
   mutex)
 
 
@@ -48,36 +51,23 @@ in a owner-mutex relationship."
 (defun mutices-in (action)
   (with-accessors ((a add-list) (d delete-list)) action
     (append
-      (mapcar (rcurry #'%validate-mutex d) (%mutex-candidates a))
-      (mapcar (rcurry #'%validate-mutex a) (%mutex-candidates d))
-      (mapcar (rcurry #'%validate-release d a) (%release-candidates a d))
-      (mapcar (rcurry #'%validate-release a d) (%release-candidates d a)))))
+      (mapcar (rcurry #'%validate d d) (%candidates a a :positive))
+      (mapcar (rcurry #'%validate a a) (%candidates d d :positive))
+      (mapcar (rcurry #'%validate d a) (%candidates a d :negative))
+      (mapcar (rcurry #'%validate a d) (%candidates d a :negative)))))
 
 @export
-(defun %mutex-candidates (effects)
-  (when (> (length effects) 1)
-    (let (pairs)
-      (map-permutations
-       (lambda (pair)
-	 (destructuring-bind (e1 e2) pair
-	   (when (subset-effect-p e1 e2)
-	     (push (list e2 e1 (%indices e2 e1) :positive)
-		   pairs))))
-       effects
-       :length 2)
-      pairs)))
-
-@export
-(defun %release-candidates (effects ~effects)
+(defun %candidates (maybe-owners maybe-mutices kind)
   "Try to find negations of mutices, that is, those predicates which
 represent resources being released."
   (let (acc)
     (map-product
      (lambda (e1 e2)
-       (when (subset-effect-p e1 e2)
-	 (push (list e2 e1 (%indices e2 e1) :negative)
+       (when (and (not (eq e1 e2))
+                  (subset-effect-p e1 e2))
+	 (push (list e2 e1 (%indices e2 e1) kind)
 	       acc)))
-     effects ~effects)
+     maybe-owners maybe-mutices)
     acc))
 
 @export
@@ -102,42 +92,26 @@ represent resources being released."
 	(parameters pred)
 	indices)))
 
-(defun %validate-mutex (mutex checked-against)
+(defun %owner-implies-mutex-p (owner mutex indices maybe-owners maybe-mutices)
+  (every
+   (lambda (true-owner)
+     (some
+      (curry #'%matches-to-mutex-p
+             mutex indices true-owner)
+      maybe-mutices))
+   (remove-if-not
+    (curry #'%matches-to-owner-p owner)
+    maybe-owners)))
+
+(defun %validate (mutex maybe-owners maybe-mutices)
   (ematch mutex
     ((or (list owner mutex indices kind)
 	 (list owner mutex indices kind :validated))
-     (if (every
-	  (lambda (true-owner)
-	    (some (curry #'%matches-to-mutex-p
-			 mutex indices true-owner)
-		  checked-against))
-	  (remove-if-not
-	   (curry #'%matches-to-owner-p owner)
-	   checked-against))
+     (if (%owner-implies-mutex-p  owner mutex indices maybe-owners maybe-mutices)
 	 (list owner mutex indices kind :validated)
 	 (list owner mutex indices kind :infeasible)))
     ((list _ _ _ _ :infeasible)
      mutex)))
-
-(defun %validate-release (mutex checked-against ~checked-against)
-  (ematch mutex
-    ((or (list owner mutex indices kind)
-	 (list owner mutex indices kind :validated))
-     (if (every
-	  (lambda (true-owner)
-	    (some
-	     (curry #'%matches-to-mutex-p
-		    mutex indices true-owner)
-	     ~checked-against))
-	  (remove-if-not
-	   (curry #'%matches-to-owner-p owner)
-	   checked-against))
-	 (list owner mutex indices kind :validated)
-	 (list owner mutex indices kind :infeasible)))
-    ((list _ _ _ _ :infeasible)
-     mutex)))
-   
-
 
 @export
 (defun categorize-mutices (candidates)
