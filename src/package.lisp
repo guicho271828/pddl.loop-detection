@@ -5,19 +5,19 @@
 (in-package :cl-user)
 (defpackage pddl.loop-detection
   (:use :cl
-	:guicho-utilities
+        :guicho-utilities
         :guicho-utilities.threading
         :guicho-a*
-	:guicho-red-black-tree
-	:iterate
-	:optima
+        :guicho-red-black-tree
+        :iterate
+        :optima
         :osicat
-	:annot.doc
-	:cl-syntax
+        :annot.doc
+        :cl-syntax
         :pddl
-	:pddl.scheduler
-	:pddl.plan-optimizer
-	:alexandria
+        :pddl.scheduler
+        :pddl.plan-optimizer
+        :alexandria
         :bordeaux-threads
         :lparallel)
   (:shadowing-import-from

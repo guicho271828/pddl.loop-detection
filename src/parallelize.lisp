@@ -14,12 +14,12 @@
 (defun parallelize-loop-plan (loop-plan movements-shrinked)
   (flet ((mutices (state) (mappend (rcurry #'nth movements-shrinked) state)))
     (list* (first loop-plan)
-	   (iter (with pstate-n = (car loop-plan))
-		 (with used-mutices = (mutices pstate-n))
-		 (for state in (cdr loop-plan))
-		 (for pstate-1 previous state)
+           (iter (with pstate-n = (car loop-plan))
+                 (with used-mutices = (mutices pstate-n))
+                 (for state in (cdr loop-plan))
+                 (for pstate-1 previous state)
 
 
-		 ))))
+                 ))))
 
 

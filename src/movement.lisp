@@ -10,15 +10,15 @@ its precondition or the effect."
     ((pddl-predicate name domain)
      (remove-if-not
       (named-lambda per-action (action)
-	(flet ((per-branch (branch cont)
-		 (match branch
-		   ((op _ preds) (funcall cont preds))
-		   ((pddl-predicate :name name2)
-		    (when (eq name name2)
-		      (return-from per-action t))))))
-	  (walk-tree #'per-branch (precondition action))
-	  (walk-tree #'per-branch (effect action))
-	  nil))
+        (flet ((per-branch (branch cont)
+                 (match branch
+                   ((op _ preds) (funcall cont preds))
+                   ((pddl-predicate :name name2)
+                    (when (eq name name2)
+                      (return-from per-action t))))))
+          (walk-tree #'per-branch (precondition action))
+          (walk-tree #'per-branch (effect action))
+          nil))
       (actions domain)))))
 
 (defmethod related-to (designator (ta timed-action))
@@ -29,54 +29,54 @@ its precondition or the effect."
   (match mutex
     ((list* owner _)
      (or (some (curry #'%matches-to-owner-p owner)
-	       (add-list action))
-	 (some (curry #'%matches-to-owner-p owner)
-	       (delete-list action))))))
+               (add-list action))
+         (some (curry #'%matches-to-owner-p owner)
+               (delete-list action))))))
 
 @export
 (defun %extract-movements (object schedule domain)
   (let (related indices)
     (multiple-value-setq
-	(related indices)
+        (related indices)
       (iter (for ta in schedule)
-	    (for i from 0)
-	    (when (related-to object ta)
-	      (collect ta into related)
-	      (collect i into indices))
-	    (finally (return (values related indices)))))
+            (for i from 0)
+            (when (related-to object ta)
+              (collect ta into related)
+              (collect i into indices))
+            (finally (return (values related indices)))))
 
     (values
      (mapcar (compose
-	      (let ((owners (mapcar #'first (mutex-predicates domain))))
-		(lambda (states)
-		  (remove-if-not
-		   (lambda (atomic-state)
-		     (some
-		      (rcurry #'%matches-to-owner-p atomic-state)
-		      owners))
-		   states)))
-	      (lambda (ta)
-		(match ta
-		  ((timed-action
-		    :end (timed-state :state states))
-		   (remove-if-not (curry #'related-to object)
-				  states)))))
-	     related)
+              (let ((owners (mapcar #'first (mutex-predicates domain))))
+                (lambda (states)
+                  (remove-if-not
+                   (lambda (atomic-state)
+                     (some
+                      (rcurry #'%matches-to-owner-p atomic-state)
+                      owners))
+                   states)))
+              (lambda (ta)
+                (match ta
+                  ((timed-action
+                    :end (timed-state :state states))
+                   (remove-if-not (curry #'related-to object)
+                                  states)))))
+             related)
      indices)))
 
 @export
 (defun shrink-movements (movements indices)
   (iter (for states in (cdr movements))
-	(for i in (cdr indices))
-	(for pstates in movements)
-	(for previ in indices)
-	(unless (set-equal states pstates :test #'eqstate)
-	  (collect pstates into shrinked-states)
-	  (collect previ into shrinked-state-indices))
-	(finally
-	 (return (values
-		  shrinked-states
-		  shrinked-state-indices)))))
+        (for i in (cdr indices))
+        (for pstates in movements)
+        (for previ in indices)
+        (unless (set-equal states pstates :test #'eqstate)
+          (collect pstates into shrinked-states)
+          (collect previ into shrinked-state-indices))
+        (finally
+         (return (values
+                  shrinked-states
+                  shrinked-state-indices)))))
 
 
 @export

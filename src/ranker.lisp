@@ -19,18 +19,18 @@
 DO NOT use shrinked MOVEMENTS-INDICES. It will cause an error."
   (+ (movement-transition-cost schedule 0 (first (first loop-plan)))
      (reduce #'+
-	  (mapcar (compose 
-		   (lambda (changed)
-		     (movement-transition-cost
-		      schedule
-		      (nth (1- changed) movements-indices)
-		      (nth changed movements-indices)))
-		   #'unit-list-head
-		   #'set-difference)
-		  (cdr loop-plan)
-		  loop-plan))))
+          (mapcar (compose 
+                   (lambda (changed)
+                     (movement-transition-cost
+                      schedule
+                      (nth (1- changed) movements-indices)
+                      (nth changed movements-indices)))
+                   #'unit-list-head
+                   #'set-difference)
+                  (cdr loop-plan)
+                  loop-plan))))
 
 @export
 (defun sort-loops (loops schedule movements-indices)
   (sort loops #'< :key (curry #'loop-heuristic-cost
-			      schedule movements-indices)))
+                              schedule movements-indices)))

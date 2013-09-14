@@ -10,7 +10,7 @@
   "The basic function which checks if the given two effects are
 in a owner-mutex relationship."
   (subsetp (parameters effect1)
-	   (parameters effect2)))
+           (parameters effect2)))
 
 
 @export
@@ -26,7 +26,7 @@ in a owner-mutex relationship."
    (lambda (a)
      (mapcar
       (curry #'%validate-mutex-among-actions
-	     (actions domain))
+             (actions domain))
       (mutices-in a)))
    (actions domain)))
 
@@ -65,32 +65,32 @@ represent resources being released."
      (lambda (e1 e2)
        (when (and (not (eq e1 e2))
                   (subset-effect-p e1 e2))
-	 (push (list e2 e1 (%indices e2 e1) kind)
-	       acc)))
+         (push (list e2 e1 (%indices e2 e1) kind)
+               acc)))
      maybe-owners maybe-mutices)
     acc))
 
 @export
 (defun %indices (predicate mutex)
   (iter (for p in (parameters mutex))
-	(collect (position p (parameters predicate)))))
+        (collect (position p (parameters predicate)))))
 
 (defun %matches-to-owner-p (owner pred)
   (and (eqname pred owner)
        (every #'pddl-supertype-p
-	      (mapcar #'type (parameters pred))
-	      (mapcar #'type (parameters owner)))))
+              (mapcar #'type (parameters pred))
+              (mapcar #'type (parameters owner)))))
 
 (defun %matches-to-mutex-p (mutex indices true-owner pred)
   (and (eqname pred mutex)
        (every #'pddl-supertype-p
-	      (mapcar #'type (parameters pred))
-	      (mapcar #'type (parameters mutex)))
+              (mapcar #'type (parameters pred))
+              (mapcar #'type (parameters mutex)))
        (every
-	(lambda (param index)
-	  (eq param (nth index (parameters true-owner))))
-	(parameters pred)
-	indices)))
+        (lambda (param index)
+          (eq param (nth index (parameters true-owner))))
+        (parameters pred)
+        indices)))
 
 (defun %owner-implies-mutex-p (owner mutex indices maybe-owners maybe-mutices)
   (every
@@ -106,10 +106,10 @@ represent resources being released."
 (defun %validate (mutex maybe-owners maybe-mutices)
   (ematch mutex
     ((or (list owner mutex indices kind)
-	 (list owner mutex indices kind :validated))
+         (list owner mutex indices kind :validated))
      (if (%owner-implies-mutex-p  owner mutex indices maybe-owners maybe-mutices)
-	 (list owner mutex indices kind :validated)
-	 (list owner mutex indices kind :infeasible)))
+         (list owner mutex indices kind :validated)
+         (list owner mutex indices kind :infeasible)))
     ((list _ _ _ _ :infeasible)
      mutex)))
 
@@ -118,12 +118,12 @@ represent resources being released."
   (let ((hash (make-hash-table :test #'equalp)))
     (dolist (candidate candidates hash)
       (match candidate
-	((list* owner mutex indices kind _)
-	 (push candidate
-	       (gethash (list (name owner)
-			      (mapcar #'type (parameters owner))
-			      (name mutex)
-			      indices kind) hash)))))))
+        ((list* owner mutex indices kind _)
+         (push candidate
+               (gethash (list (name owner)
+                              (mapcar #'type (parameters owner))
+                              (name mutex)
+                              indices kind) hash)))))))
 
 @export
 (defun shrink-mutices (candidates-hash)
@@ -132,8 +132,8 @@ represent resources being released."
      (lambda (key mutices)
        @ignore key
        (when (every (lambda (mutex)
-		      (eq :validated (fifth mutex))) mutices)
-	 (push (car mutices) acc)))
+                      (eq :validated (fifth mutex))) mutices)
+         (push (car mutices) acc)))
      candidates-hash)
     acc))
 

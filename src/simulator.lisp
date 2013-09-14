@@ -28,15 +28,15 @@
 
 (defmethod generic-eq ((n1 state-node) (n2 state-node))
   (equalp (current-state n1)
-	  (current-state n2)))
+          (current-state n2)))
 
 (defmethod cost ((tr transition))
   1)
 (defmethod heuristic-cost-between ((n1 state-node) (n2 state-node))
   ;; this value is always the same, so it is meaningless.
   ;; (iter (for pos1 in (current-state n1))
-  ;; 	(for pos2 in (current-state n2))
-  ;; 	(summing (abs (- pos2 pos1))))
+  ;;    (for pos2 in (current-state n2))
+  ;;    (summing (abs (- pos2 pos1))))
   0
   )
 
@@ -46,8 +46,8 @@
 @export
 (defun search-loop-path (movements-shrinked steady-state &key (verbose t))
   (handler-return ((path-not-found (lambda (c)
-				     @ignore c
-				     nil)))
+                                     @ignore c
+                                     nil)))
     (let* ((*state-hash* (make-hash-table :test #'equalp))
            (goal (make-instance
                   'state-node
@@ -79,35 +79,35 @@
 (defun movable (n goal-n used movements)
   (declare (optimize (speed 3) (safety 0) (debug 0)))
   (let ((n2 (1+ n))
-	(carry-out-index (length movements)))
+        (carry-out-index (length movements)))
     @type fixnum carry-out-index
     @type fixnum n2
     (and ; include n if
      (not (= n goal-n)) ; the goal is not achieved yet
      (< n carry-out-index) ; n is not already the carry-out.
      (if (= carry-out-index n2) ; check the resource conflict.
-	 t          ; if n+1 is the carry-out, it doesn't consume resources.
-	 (null      ; else, the resource constraint should hold
-	  (intersection
-	   (nth n2 movements)
-	   (set-difference used (nth n movements)
-			   :test #'eqstate)
-	   :test #'eqstate))))))
+         t          ; if n+1 is the carry-out, it doesn't consume resources.
+         (null      ; else, the resource constraint should hold
+          (intersection
+           (nth n2 movements)
+           (set-difference used (nth n movements)
+                           :test #'eqstate)
+           :test #'eqstate))))))
 
 (defmethod generate-nodes ((state state-node))
   (with-slots (movements current-state) state
     ;; movements: (mutex*)*
     ;; current: number*
     (let* ((goal (goal state))
-	   (goal-state (current-state goal))
-	   (used (mappend (rcurry #'nth movements) current-state)))
+           (goal-state (current-state goal))
+           (used (mappend (rcurry #'nth movements) current-state)))
       ;; used: mutices currently in use
       (mapcar
        (curry #'%make-state-node movements current-state goal)
        (iter (for n in current-state)
-	     (for goal-n in goal-state)
-	     (when (movable n goal-n used movements)
-	       (collect n)))))))
+             (for goal-n in goal-state)
+             (when (movable n goal-n used movements)
+               (collect n)))))))
 
 #|
 
