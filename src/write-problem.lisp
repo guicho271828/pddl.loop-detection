@@ -20,5 +20,6 @@
                        :direction :output
                        :if-exists :supersede
                        :if-does-not-exist :create)
-      (print-pddl-object problem s))
+      (let ((*package* (find-package :pddl)))
+        (print-pddl-object problem s)))
     path))
