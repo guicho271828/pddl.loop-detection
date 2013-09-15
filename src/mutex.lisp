@@ -33,17 +33,17 @@ in a owner-mutex relationship."
 @export
 (defun %validate-mutex-among-actions (actions mutex)
   (ematch mutex
-    ((list _ _ _ :positive _)
+    ((list* _ _ _ :mutex _)
      (dolist (a2 actions)
-       (setf mutex (%validate mutex (delete-list a2) (delete-list a2)))
-       (setf mutex (%validate mutex (add-list a2) (add-list a2)))
-       (setf mutex (%validate mutex (add-list a2) (negative-preconditions a2)))
+       (setf mutex (%validate mutex a2 (delete-list a2) (delete-list a2)))
+       (setf mutex (%validate mutex a2 (add-list a2) (add-list a2)))
+       (setf mutex (%validate mutex a2 (add-list a2) (negative-preconditions a2)))
        ))
-    ((list _ _ _ :negative _)
+    ((list* _ _ _ :release _)
      (dolist (a2 actions)
-       (setf mutex (%validate mutex (add-list a2) (delete-list a2)))
-       (setf mutex (%validate mutex (delete-list a2) (add-list a2)))
-       (setf mutex (%validate mutex (add-list a2) (positive-preconditions a2))))))
+       (setf mutex (%validate mutex a2 (add-list a2) (delete-list a2)))
+       (setf mutex (%validate mutex a2 (delete-list a2) (add-list a2)))
+       (setf mutex (%validate mutex a2 (add-list a2) (positive-preconditions a2))))))
   mutex)
 
 
@@ -51,10 +51,10 @@ in a owner-mutex relationship."
 (defun mutices-in (action)
   (with-accessors ((a add-list) (d delete-list)) action
     (append
-      (mapcar (rcurry #'%validate d d) (%candidates a a :positive))
-      (mapcar (rcurry #'%validate a a) (%candidates d d :positive))
-      (mapcar (rcurry #'%validate d a) (%candidates a d :negative))
-      (mapcar (rcurry #'%validate a d) (%candidates d a :negative)))))
+      (mapcar (rcurry #'%validate action d d) (%candidates a a :mutex))
+      (mapcar (rcurry #'%validate action a a) (%candidates d d :mutex))
+      (mapcar (rcurry #'%validate action d a) (%candidates a d :release))
+      (mapcar (rcurry #'%validate action a d) (%candidates d a :release)))))
 
 @export
 (defun %candidates (maybe-owners maybe-mutices kind)
@@ -63,7 +63,7 @@ represent resources being released."
   (let (acc)
     (map-product
      (lambda (e1 e2)
-       (when (and (not (eq e1 e2))
+       (when (and (not (eqstate e1 e2))
                   (subset-effect-p e1 e2))
          (push (list e2 e1 (%indices e2 e1) kind)
                acc)))
@@ -103,14 +103,14 @@ represent resources being released."
     (curry #'%matches-to-owner-p owner)
     maybe-owners)))
 
-(defun %validate (mutex maybe-owners maybe-mutices)
+(defun %validate (mutex action maybe-owners maybe-mutices)
   (ematch mutex
     ((or (list owner mutex indices kind)
          (list owner mutex indices kind :validated))
      (if (%owner-implies-mutex-p  owner mutex indices maybe-owners maybe-mutices)
-         (list owner mutex indices kind :validated)
-         (list owner mutex indices kind :infeasible)))
-    ((list _ _ _ _ :infeasible)
+	 (list owner mutex indices kind :validated)
+	 (list owner mutex indices kind :infeasible action)))
+    ((list _ _ _ _ :infeasible _)
      mutex)))
 
 @export
@@ -132,8 +132,10 @@ represent resources being released."
      (lambda (key mutices)
        @ignore key
        (when (every (lambda (mutex)
-                      (eq :validated (fifth mutex))) mutices)
-         (push (car mutices) acc)))
+                      (match mutex
+                        ((list _ _ _ _ :validated)
+                         t))) mutices)
+	 (push (car mutices) acc)))
      candidates-hash)
     acc))
 
