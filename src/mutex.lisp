@@ -75,17 +75,8 @@ represent resources being released."
   (iter (for p in (parameters mutex))
         (collect (position p (parameters predicate)))))
 
-(defun %matches-to-owner-p (owner pred)
-  (and (eqname pred owner)
-       (every #'pddl-supertype-p
-              (mapcar #'type (parameters pred))
-              (mapcar #'type (parameters owner)))))
-
 (defun %matches-to-mutex-p (mutex indices true-owner pred)
-  (and (eqname pred mutex)
-       (every #'pddl-supertype-p
-              (mapcar #'type (parameters pred))
-              (mapcar #'type (parameters mutex)))
+  (and (predicate-more-specific-p pred mutex)
        (every
         (lambda (param index)
           (eq param (nth index (parameters true-owner))))
@@ -100,7 +91,7 @@ represent resources being released."
              mutex indices true-owner)
       maybe-mutices))
    (remove-if-not
-    (curry #'%matches-to-owner-p owner)
+    (curry #'predicate-more-specific-p owner)
     maybe-owners)))
 
 (defun %validate (mutex action maybe-owners maybe-mutices)

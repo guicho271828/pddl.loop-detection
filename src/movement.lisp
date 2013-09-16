@@ -28,9 +28,9 @@ its precondition or the effect."
 (defun acquire-or-release-mutex-p (mutex action)
   (match mutex
     ((list* owner _)
-     (or (some (curry #'%matches-to-owner-p owner)
+     (or (some (curry #'predicate-more-specific-p owner)
                (add-list action))
-         (some (curry #'%matches-to-owner-p owner)
+         (some (curry #'predicate-more-specific-p owner)
                (delete-list action))))))
 
 @export
@@ -52,7 +52,7 @@ its precondition or the effect."
                   (remove-if-not
                    (lambda (atomic-state)
                      (some
-                      (rcurry #'%matches-to-owner-p atomic-state)
+                      (rcurry #'predicate-more-specific-p atomic-state)
                       owners))
                    states)))
               (lambda (ta)

@@ -97,7 +97,7 @@ The owner is already added in the previous step. "
     (iter
       (for mutex in
            (remove-if-not
-            (compose (rcurry #'%matches-to-owner-p owner) #'first)
+            (compose (rcurry #'predicate-more-specific-p owner) #'first)
             mutices))
       (match mutex
         ((list _ (pddl-predicate :name mname)indices kind _)
