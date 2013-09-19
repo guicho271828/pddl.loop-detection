@@ -325,8 +325,7 @@ the number of bases.
   (defun %modest (moves steady-states
                   forward-duplication-check-p
                   post-duplication-check-p)
-    (let ((i-lock (make-lock "i"))
-          (buffer (make-array 61
+    (let ((buffer (make-array 61
                               :element-type 'character
                               :initial-element #\Space
                               :fill-pointer 0)))
@@ -375,7 +374,7 @@ meaning of EQUALP."
                      %modest
                      %none))
     (macrolet ((%call (name) `(case duplication-check
-                                (nil           (,name movements-shrinked steady-states nil nil))
+                                ((nil)           (,name movements-shrinked steady-states nil nil))
                                 (:post-only    (,name movements-shrinked steady-states nil t))
                                 (:forward-only (,name movements-shrinked steady-states t nil))
                                 (otherwise     (,name movements-shrinked steady-states t t)))))
