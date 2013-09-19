@@ -101,7 +101,7 @@ This file is a part of pddl.loop-detection project.
     (time (setf loopable-steady-states
 		(exploit-loopable-steady-states
                  movements-shrinked
-                 steady-states :verbose nil)))))
+                 steady-states :verbose :modest)))))
 
 (defparameter prob
   cell-assembly-model2a-1)

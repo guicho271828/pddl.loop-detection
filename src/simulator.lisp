@@ -325,24 +325,29 @@ the number of bases.
   (defun %modest (moves steady-states
                   forward-duplication-check-p
                   post-duplication-check-p)
-    (let ((i 0) (i-lock (make-lock "i")))
+    (let ((i-lock (make-lock "i"))
+          (buffer (make-array 61
+                              :element-type 'character
+                              :initial-element #\Space
+                              :fill-pointer 0)))
       (%loop-verbosity
        (lambda ()
-         (with-lock-held (i-lock)
-           (incf i)
-           (when (zerop (mod i 60))
-             (with-lock-held (*print-lock*)
-               (terpri *shared-output*)))))
+         (with-lock-held (*print-lock*)
+           (when (= (fill-pointer buffer) 59)
+             (loop for c across buffer
+                do (write-char c *shared-output*))
+             (terpri *shared-output*)
+             (setf (fill-pointer buffer) 0))))
        (lambda (results)
-         @ignorable results
          (with-lock-held (*print-lock*)
-           (write-char #\. *shared-output*)))
+           (vector-push-extend (density-char (length results)) buffer)))
        (lambda ()
          (with-lock-held (*print-lock*)
-           (write-char #\F *shared-output*)))
-       (lambda ()
+           (vector-push-extend #\Space buffer)))
+       (lambda (ss)
+         @ignore ss
          (with-lock-held (*print-lock*)
-           (write-char #\D *shared-output*)))
+           (vector-push-extend #\D buffer)))
        forward-duplication-check-p
        post-duplication-check-p
        steady-states
