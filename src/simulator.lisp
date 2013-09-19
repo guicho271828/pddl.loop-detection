@@ -49,47 +49,47 @@
         (collect (current-state node) at beginning)))
 
 @export
-(defun search-loop-path (movements-shrinked steady-state &key (verbose t))
-  (handler-return ((path-not-found (lambda (c)
-                                     @ignore c
-                                     nil)))
-    (let* ((*state-hash* (make-hash-table :test #'equalp))
-           (goal (make-instance
-                  'state-node
-                  :movements movements-shrinked
-                  :current-state (make-eol steady-state
-                                           (length movements-shrinked))))
-           (start (make-instance
-                   'state-node
-                   :movements movements-shrinked
-                   :goal goal
-                   :current-state steady-state)))
-      (setf (goal goal) goal)
-      (let (solutions (cost 0))
-        (handler-bind
-            ((path-not-found
-              (lambda (c)
-                (declare (ignorable c))
+(defun search-loop-path (movements-shrinked steady-state
+                         &key (verbose t) (limit MOST-POSITIVE-FIXNUM))
+  (let* ((*state-hash* (make-hash-table :test #'equalp))
+         (goal (make-instance
+                'state-node
+                :movements movements-shrinked
+                :current-state (make-eol steady-state
+                                         (length movements-shrinked))))
+         (start (make-instance
+                 'state-node
+                 :movements movements-shrinked
+                 :goal goal
+                 :current-state steady-state)))
+    (setf (goal goal) goal)
+    (let (solutions (cost 0))
+      (handler-bind
+          ((path-not-found
+            (lambda (c)
+              (declare (ignorable c))
+              (when verbose
+                (format t "~&Completely searched the state space!~%Paths found:~%~w"
+                        solutions))))
+           (solution-found
+            (lambda (c)
+              (let* ((last (solution c))
+                     (path (get-loop-from-last last)))
                 (when verbose
-                  (format t "Completely searched the state space!"))))
-             (solution-found
-              (lambda (c)
-                (let* ((last (solution c))
-                       (path (get-loop-from-last last)))
-                  (when verbose
-                    (format
-                     t "~%Cost : ~w~%Solution : ~w"
-                     (cost last) path))
-                  (cond
-                    ((null solutions)
-                     (push path solutions)
-                     (setf cost (cost last))
-                     (continue))
-                    ((= cost (cost last))
-                     (push path solutions)
-                     (continue)))))))
-          (a*-search start goal :verbose verbose))
-        solutions))))
+                  (format
+                   t "~%Cost : ~w~%Solution : ~w"
+                   (cost last) path))
+                (cond
+                  ((null solutions)
+                   (push path solutions)
+                   (setf cost (cost last))
+                   (continue))
+                  ((= cost (cost last))
+                   (push path solutions)
+                   (when (< (length solutions) limit)
+                     (continue))))))))
+        (a*-search start goal :verbose verbose))
+      solutions)))
 
 (declaim (ftype (function (list list state-node fixnum) boolean) %make-state-node))
 (defun %make-state-node (movements-shrinked current-state goal n)
