@@ -247,13 +247,13 @@ the number of bases.
                           (thereis (%fast-failure-check ss bucket)))
                     (funcall-if-functionp after-failure))
                    (t
-                    (if-let ((result
+                    (if-let ((results
                               (search-loop-path
                                moves ss :verbose verbose)))
                       (progn
                         (funcall-if-functionp after-success)
                         (with-lock-held ((aref bucket-locks bases))
-                          (push result (aref buckets bases))))
+                          (appendf (aref buckets bases) results)))
                       (progn
                         (funcall-if-functionp after-failure)
                         (with-lock-held ((aref failure-buckets-locks bases))
