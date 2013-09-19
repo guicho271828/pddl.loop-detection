@@ -291,7 +291,7 @@ the number of bases.
         (pmap nil
               #'%exploit/thread
               (shuffle (coerce steady-states 'vector)))
-        (format *shared-output* "~&Main search finished. accumelating...")
+        (format *shared-output* "~&Main search finished. accumulating...")
         (reduce #'append (if post-duplication-check-p
                              (%post-duplication-check buckets)
                              buckets)
