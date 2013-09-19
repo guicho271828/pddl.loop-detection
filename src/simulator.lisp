@@ -176,6 +176,29 @@ the number of bases.
                 "Valid loops w/o duplicated ones" true-count)
           "-"))
 
+(defun density-char (n)
+  (case n
+    (0 #\Space)
+    (1 #\.)
+    (2 #\,)
+    (3 #\:)
+    (4 #\;)
+    (5 #\i)
+    (6 #\j)
+    (7 #\!)
+    (8 #\|)
+    (9 #\l)
+    (10 #\I)
+    (11 #\k)
+    (12 #\K)
+    (13 #\M)
+    (14 #\W)
+    (15 #\#)
+    (16 #\0)
+    (17 #\@)
+    (t  #\■)))
+
+
 (defun make-buckets (n)
   (make-array n :initial-element nil))
 
@@ -251,7 +274,7 @@ the number of bases.
                               (search-loop-path
                                moves ss :verbose verbose)))
                       (progn
-                        (funcall-if-functionp after-success)
+                        (funcall-if-functionp after-success results)
                         (with-lock-held ((aref bucket-locks bases))
                           (appendf (aref buckets bases) results)))
                       (progn
@@ -268,6 +291,7 @@ the number of bases.
         (pmap nil
               #'%exploit/thread
               (shuffle (coerce steady-states 'vector)))
+        (format *shared-output* "~&Main search finished. accumelating...")
         (reduce #'append (if post-duplication-check-p
                              (%post-duplication-check buckets)
                              buckets)
@@ -285,12 +309,8 @@ the number of bases.
            (incf i)
            (with-lock-held (*print-lock*)
              (format *shared-output* "~%~a/~a: " i max))))
-       (lambda ()
-         (with-lock-held (*print-lock*)
-           (format *shared-output* " ...success!")))
-       (lambda ()
-         (with-lock-held (*print-lock*)
-           (format *shared-output* " ...failed.")))
+       nil
+       nil
        (lambda (ss)
          (with-lock-held (*print-lock*)
            (format *shared-output*
@@ -313,7 +333,8 @@ the number of bases.
            (when (zerop (mod i 60))
              (with-lock-held (*print-lock*)
                (terpri *shared-output*)))))
-       (lambda ()
+       (lambda (results)
+         @ignorable results
          (with-lock-held (*print-lock*)
            (write-char #\. *shared-output*)))
        (lambda ()

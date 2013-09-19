@@ -89,8 +89,8 @@ This file is a part of pddl.loop-detection project.
     (do-restart ((next (lambda ()
 			 (incf i))))
       (print (nth i steady-states))
-      (let ((path (time (search-loop-path movements-shrinked (nth i steady-states)))))
-	(print path)
+      (let ((paths (time (search-loop-path movements-shrinked (nth i steady-states)))))
+	(print paths)
 	(terpri))
       (error "what to do next?"))))
 
@@ -109,7 +109,6 @@ This file is a part of pddl.loop-detection project.
   (type (object prob 'b-0)))
 
 (defvar steady-state-problems)
-(defvar steady-state-problem)
 
 (test (build-problem)
   (finishes
@@ -119,13 +118,17 @@ This file is a part of pddl.loop-detection project.
 		 (collect
 		     (build-steady-state-problem
 		      prob loop-plan schedule
-		      movements-shrinked movements-indices-shrinked base-type))))))
+		      movements-shrinked movements-indices-shrinked base-type)))))))
+
+(test (build-problem-1 :depends-on build-problem)
   
   ;; regression test : the conses are always fresh
   (for-all ((problem1 (lambda () (random-elt steady-state-problems)))
 	    (problem2 (lambda () (random-elt steady-state-problems))))
     (unless (eq problem1 problem2)
-      (is-false (equal (goal problem1) (goal problem2)))))
+      (is-false (equal (goal problem1) (goal problem2))))))
+
+(test (write-problem :depends-on build-problem)
   
   (let ((tmpdir (merge-pathnames (string-downcase (gensym "cell-assebly")) #p"/tmp/")))
 
@@ -151,8 +154,4 @@ This file is a part of pddl.loop-detection project.
                          :key (lambda (obj)
                                 (symbol-name (name obj))))))))
     (inferior-shell:run
-     `(rm -rfv ,tmpdir)))
-  
-
-  (setf steady-state-problem
-	(random-elt steady-state-problems)))
+     `(rm -rfv ,tmpdir))))
