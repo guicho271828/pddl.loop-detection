@@ -155,3 +155,8 @@ This file is a part of pddl.loop-detection project.
                                 (symbol-name (name obj))))))))
     (inferior-shell:run
      `(rm -rfv ,tmpdir))))
+
+(test integrated
+  (terpri)
+  (finishes
+    (exploit-loop-problems cell-assembly-model2a-1-6 'b-0)))

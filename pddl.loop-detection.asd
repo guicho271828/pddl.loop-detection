@@ -28,7 +28,8 @@
 		 (:file :simulator)
 		 (:file :ranker)
 		 (:file :problem-builder)
-                 (:file :write-problem))))
+                 (:file :write-problem)
+                 (:file :integrated))))
   :description ""
   :long-description
   #.(with-open-file (stream (merge-pathnames
