@@ -28,7 +28,7 @@ This file is a part of pddl.loop-detection project.
 
 (defparameter schedule
   (reschedule
-   cell-assembly-model2a-1-6
+   cell-assembly-model2b-2-7
    :minimum-slack))
 
 ;; 輸送型のアクションを検出できれば - 場所がわかるかも。
@@ -40,12 +40,13 @@ This file is a part of pddl.loop-detection project.
 
 ;; 場所の列だけでのか?
 
-(test same-actions-per-base
-  (is (every (lambda (ta0 ta1)
-	       (eq (name (timed-action-action ta0))
-		   (name (timed-action-action ta1))))
-	     (filter-schedule schedule :objects '(b-0))
-	     (filter-schedule schedule :objects '(b-1)))))
+;; 別にアクション列は同じじゃなかった。
+;; (test same-actions-per-base
+;;   (is (every (lambda (ta0 ta1)
+;; 	       (eq (name (timed-action-action ta0))
+;; 		   (name (timed-action-action ta1))))
+;; 	     (filter-schedule schedule :objects '(b-0))
+;; 	     (filter-schedule schedule :objects '(b-1)))))
 
 (defvar movements)
 (defvar movements-indices)
@@ -84,16 +85,6 @@ This file is a part of pddl.loop-detection project.
 	 movements-shrinked
 	 (lastcar steady-states))))
 
-(defun test-interactively ()
-  (let ((i 0))
-    (do-restart ((next (lambda ()
-			 (incf i))))
-      (print (nth i steady-states))
-      (let ((paths (time (search-loop-path movements-shrinked (nth i steady-states)))))
-	(print paths)
-	(terpri))
-      (error "what to do next?"))))
-
 (defvar loopable-steady-states)
 (test (loopable-steady-states)
   (format t "~%testing loopable-steady-states. It takes time so please wait...~2%")
@@ -104,7 +95,7 @@ This file is a part of pddl.loop-detection project.
                  steady-states :verbose :modest)))))
 
 (defparameter prob
-  cell-assembly-model2a-1)
+  cell-assembly-model2b-2)
 (defparameter base-type
   (type (object prob 'b-0)))
 
@@ -123,9 +114,8 @@ This file is a part of pddl.loop-detection project.
 (test (build-problem-1 :depends-on build-problem)
   
   ;; regression test : the conses are always fresh
-  (for-all ((problem1 (lambda () (random-elt steady-state-problems)))
-	    (problem2 (lambda () (random-elt steady-state-problems))))
-    (unless (eq problem1 problem2)
+  (for-all ((problem1 (lambda () (random-elt steady-state-problems))))
+    (for-all ((problem2 (lambda () (random-elt (remove problem1 steady-state-problems)))))
       (is-false (equal (goal problem1) (goal problem2))))))
 
 (test (write-problem :depends-on build-problem)
@@ -159,4 +149,4 @@ This file is a part of pddl.loop-detection project.
 (test integrated
   (terpri)
   (finishes
-    (exploit-loop-problems cell-assembly-model2a-1-6 'b-0)))
+    (exploit-loop-problems cell-assembly-model2b-2-7 'b-0)))
