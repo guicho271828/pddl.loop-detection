@@ -65,7 +65,7 @@ This file is a part of pddl.loop-detection project.
 
 (defvar steady-states)
 
-(test (steady-states)
+(test (steady-states :depends-on extract-movements)
   (finishes
     (setf steady-states 
 	  (exploit-steady-states movements-shrinked)))
@@ -80,13 +80,13 @@ This file is a part of pddl.loop-detection project.
        :length 2))
     (is (= 0 (first ss)))))
 
-(test (search-loop-path)
+(test (search-loop-path :depends-on steady-states)
   (time (search-loop-path
 	 movements-shrinked
 	 (lastcar steady-states))))
 
 (defvar loopable-steady-states)
-(test (loopable-steady-states)
+(test (loopable-steady-states :depends-on steady-states)
   (format t "~%testing loopable-steady-states. It takes time so please wait...~2%")
   (finishes
     (time (setf loopable-steady-states
@@ -101,7 +101,7 @@ This file is a part of pddl.loop-detection project.
 
 (defvar steady-state-problems)
 
-(test (build-problem)
+(test (build-problem :depends-on loopable-steady-states)
   (finishes
     (time
      (setf steady-state-problems
@@ -114,9 +114,79 @@ This file is a part of pddl.loop-detection project.
 (test (build-problem-1 :depends-on build-problem)
   
   ;; regression test : the conses are always fresh
-  (for-all ((problem1 (lambda () (random-elt steady-state-problems))))
-    (for-all ((problem2 (lambda () (random-elt (remove problem1 steady-state-problems)))))
-      (is-false (equal (goal problem1) (goal problem2))))))
+  (for-all ((problem1 (curry #'random-elt steady-state-problems))
+            (problem2 (curry #'random-elt steady-state-problems)
+                      (not (eq problem1 problem2))))
+      (is-false (equal (goal problem1) (goal problem2)))))
+
+(test the-test
+  (is-true 5)
+  (is (= 5 5))
+  (is (identity t))
+  (is-false nil))
+
+(test (build-problem-2 :depends-on build-problem)
+  ;; regression test : ensures mutex predicates
+  (for-all ((problem (lambda () (random-elt steady-state-problems))))
+    (let* ((init (init problem))
+           (domain (domain problem))
+           (descriptors (mutex-predicates domain)))
+      (dolist (desc descriptors)
+        (match desc
+          ((list owner release indices :release _)
+           (dolist (state init)
+             (cond
+               ((predicate-more-specific-p state owner)
+                (let ((found (find-if (lambda (release-state?)
+                                     (pddl.loop-detection::%matches-to-mutex-p
+                                      release indices state release-state?))
+                                   init)))
+                  (is-false
+                   found
+                   "
+release predicate
+ ~a was found though its owner
+ ~a is already declared"
+                   found state)))
+               ((predicate-more-specific-p state release)
+                (let ((found (find-if (lambda (owner-state?)
+                                     (pddl.loop-detection::%matches-to-mutex-p
+                                      release indices owner-state? state))
+                                   init)))
+                  (is-false
+                   found
+                   "
+owner predicate
+ ~a was found though its release
+ ~a is already declared"
+                   found state))))))
+          ((list owner mutex indices :mutex _)
+           (dolist (state init)
+             (cond
+               ((predicate-more-specific-p state owner)
+                (let ((found (find-if (lambda (mutex-state?)
+                                     (pddl.loop-detection::%matches-to-mutex-p
+                                      mutex indices state mutex-state?))
+                                   init)))
+                  (is-true
+                   found
+                   "
+no instance of mutex predicate
+ ~a was found though an owner
+ ~a is declared"
+                   mutex state)))
+               ((predicate-more-specific-p state mutex)
+                (let ((found (find-if (lambda (owner-state?)
+                                     (pddl.loop-detection::%matches-to-mutex-p
+                                      mutex indices owner-state? state))
+                                   init)))
+                  (is-true
+                   found
+                   "
+no instance of owner predicate
+ ~a was found though a mutex
+ ~a is declared"
+                   owner state)))))))))))
 
 (test (write-problem :depends-on build-problem)
   

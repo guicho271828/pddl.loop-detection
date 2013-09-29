@@ -44,6 +44,7 @@
          ;; Add new objects, their corresponding initial states and
          ;; the goal conditions.
          (iter
+           ;; example: ss = (0 1 2 9)
            (for position in ss)
            (for base = (pddl-object :name (gen-base position) :type type))
            (for prototype-atomic-states = 
@@ -89,8 +90,8 @@
              (init *problem*))))))
 
 (defun %step2 (base base-type-p movements-shrinked mutices position)
-  "Add every mutices which are accompanied with their owners to INIT
-and also removes every release-predicates from it if necessary.
+  "Adds every mutices which are accompanied with their owners to INIT.
+Also, removes every release-predicates from INIT if necessary.
 The owner is already added in the previous step. "
   (iter
     (for owner in (nth position movements-shrinked))
@@ -99,16 +100,16 @@ The owner is already added in the previous step. "
            (remove-if-not
             (compose (rcurry #'predicate-more-specific-p owner) #'first)
             mutices))
-      (match mutex
-        ((list _ (pddl-predicate :name mname)indices kind _)
+      (ematch mutex
+        ((list _ (pddl-predicate :name mname) indices kind _)
          (let* ((oparam (substitute-if base base-type-p
                                        (parameters owner)))
                 (mparam (mapcar (rcurry #'nth oparam) indices))
                 (new-mutex (pddl-atomic-state :name mname
                                               :parameters mparam)))
            (case kind
-             (:positive (push new-mutex (init *problem*)))
-             (:negative
+             (:mutex (push new-mutex (init *problem*)))
+             (:release
               (setf (init *problem*)
                     (remove-if 
                      (lambda (state)
