@@ -67,6 +67,7 @@
            (finally
             (%step3 (positive-predicates
                      (goal unit-problem)) base base-type-p)))
+         (%step4 mutices)
          
          *problem*)))))
 
@@ -90,32 +91,21 @@
              (init *problem*))))))
 
 (defun %step2 (base base-type-p movements-shrinked mutices position)
-  "Adds every mutices which are accompanied with their owners to INIT.
-Also, removes every release-predicates from INIT if necessary.
-The owner is already added in the previous step. "
+  "Adds every mutices which are accompanied with their owners to INIT."
   (iter
-    (for owner in (nth position movements-shrinked))
-    (iter
-      (for mutex in
-           (remove-if-not
-            (compose (rcurry #'predicate-more-specific-p owner) #'first)
-            mutices))
-      (ematch mutex
-        ((list _ (pddl-predicate :name mname) indices kind _)
+    (for mutex in mutices)
+    (ematch mutex
+      ((list owner-pred (pddl-predicate :name mname) indices :mutex _)
+       (when-let ((owner (find-if (lambda (owner)
+                                    (predicate-more-specific-p owner owner-pred))
+                                  (nth position movements-shrinked))))
          (let* ((oparam (substitute-if base base-type-p
                                        (parameters owner)))
                 (mparam (mapcar (rcurry #'nth oparam) indices))
                 (new-mutex (pddl-atomic-state :name mname
                                               :parameters mparam)))
-           (case kind
-             (:mutex (push new-mutex (init *problem*)))
-             (:release
-              (setf (init *problem*)
-                    (remove-if 
-                     (lambda (state)
-                       (and (typep state 'pddl-atomic-state)
-                            (eqstate new-mutex state)))
-                     (init *problem*)))))))))))
+           (push new-mutex (init *problem*)))))
+      ((list* _ _ _ :release _)))))
 
 (defun %step3 (prototype-atomic-states base base-type-p)
   "Add the goal description."
@@ -129,3 +119,32 @@ The owner is already added in the previous step. "
                                          base-type-p
                                          parameters))
              (cdr (goal *problem*)))))))
+
+(defun %step4 (mutices)
+  "Ensures every mutex-predicates is added to INIT if necessary.
+Also, ensures every release-predicates is removed from INIT if necessary.
+The owner is already added in the previous step."
+  (iter
+    (for mutex in mutices)
+    (match mutex
+      ((list owner-pred (pddl-predicate :name mname) indices :mutex _)
+       (iter (for owner in (remove-if-not
+                            (rcurry #'predicate-more-specific-p owner-pred)
+                            (init *problem*)))
+             (pushnew
+              (pddl-atomic-state
+               :name mname
+               :parameters (mapcar (rcurry #'nth (parameters owner)) indices))
+              (init *problem*)
+              :test #'eqstate)))
+      ((list owner-pred release indices :release _)
+       (iter (for owner in (remove-if-not
+                            (rcurry #'predicate-more-specific-p owner-pred)
+                            (init *problem*)))
+             (setf (init *problem*)
+                   (remove-if 
+                    (lambda (state)
+                      (and (typep state 'pddl-atomic-state)
+                           (%matches-to-mutex-p release indices owner state)))
+                    (init *problem*))))))))
+

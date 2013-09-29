@@ -117,13 +117,34 @@ This file is a part of pddl.loop-detection project.
   (for-all ((problem1 (curry #'random-elt steady-state-problems))
             (problem2 (curry #'random-elt steady-state-problems)
                       (not (eq problem1 problem2))))
-      (is-false (equal (goal problem1) (goal problem2)))))
+    (is-false (equal (goal problem1) (goal problem2)))))
 
 (test the-test
   (is-true 5)
   (is (= 5 5))
   (is (identity t))
   (is-false nil))
+
+
+;; state が 自分のmutexになっているようなowner命題を探す。
+;; この計算を行うためには owner,mutex,indicesが必要
+(defun %find-owner (owner mutex indices state init)
+  (find-if
+   (lambda (owner-state?)
+     (and (predicate-more-specific-p owner-state? owner)
+          (pddl.loop-detection::%matches-to-mutex-p
+           mutex indices owner-state? state)))
+   init))
+
+;; state のmutex命題を探す。
+;; この計算を行うためには、owner,mutex,indicesが必要
+;; owner はいらない。stateを代わりに使えるから
+(defun %find-mutex (mutex indices state init)
+  (find-if
+   (lambda (mutex-state?)
+     (pddl.loop-detection::%matches-to-mutex-p
+      mutex indices state mutex-state?))
+   init))
 
 (test (build-problem-2 :depends-on build-problem)
   ;; regression test : ensures mutex predicates
@@ -137,10 +158,7 @@ This file is a part of pddl.loop-detection project.
            (dolist (state init)
              (cond
                ((predicate-more-specific-p state owner)
-                (let ((found (find-if (lambda (release-state?)
-                                     (pddl.loop-detection::%matches-to-mutex-p
-                                      release indices state release-state?))
-                                   init)))
+                (let ((found (%find-mutex release indices state init)))
                   (is-false
                    found
                    "
@@ -149,10 +167,7 @@ release predicate
  ~a is already declared"
                    found state)))
                ((predicate-more-specific-p state release)
-                (let ((found (find-if (lambda (owner-state?)
-                                     (pddl.loop-detection::%matches-to-mutex-p
-                                      release indices owner-state? state))
-                                   init)))
+                (let ((found (%find-owner owner release indices state init)))
                   (is-false
                    found
                    "
@@ -164,29 +179,21 @@ owner predicate
            (dolist (state init)
              (cond
                ((predicate-more-specific-p state owner)
-                (let ((found (find-if (lambda (mutex-state?)
-                                     (pddl.loop-detection::%matches-to-mutex-p
-                                      mutex indices state mutex-state?))
-                                   init)))
-                  (is-true
-                   found
-                   "
+                (is-true
+                 (%find-mutex mutex indices state init)
+                 "
 no instance of mutex predicate
  ~a was found though an owner
  ~a is declared"
-                   mutex state)))
+                 mutex state))
                ((predicate-more-specific-p state mutex)
-                (let ((found (find-if (lambda (owner-state?)
-                                     (pddl.loop-detection::%matches-to-mutex-p
-                                      mutex indices owner-state? state))
-                                   init)))
-                  (is-true
-                   found
-                   "
+                (is-true
+                 (%find-owner owner mutex indices state init)
+                 "
 no instance of owner predicate
  ~a was found though a mutex
  ~a is declared"
-                   owner state)))))))))))
+                 owner state))))))))))
 
 (test (write-problem :depends-on build-problem)
   
