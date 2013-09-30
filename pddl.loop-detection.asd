@@ -25,6 +25,7 @@
                 ((:file :mutex)
 		 (:file :movement)
 		 (:file :steady-state)
+                 (:file :steady-state-tree)
 		 (:file :simulator)
 		 (:file :ranker)
 		 (:file :problem-builder)
