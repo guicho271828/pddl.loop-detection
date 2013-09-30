@@ -20,6 +20,8 @@ for each leaf node, the first structure requires only one cons, while
 the second requires N conses where N is the length of a steady state.
 |#
 
+(defvar *min*)
+
 @export @doc "returns a cons tree of steady states. Each steady state is
 represented by a leaf or a branch of the tree. Each leaf or a branch node
 is a mutex position index.  0 indicates carry-in, where a base
@@ -28,7 +30,9 @@ exists. Any of the resulting steady-states must have one base placed
 at carry-in (= position 0)."
 (defun exploit-steady-state-tree (movements-shrinked)
   (declare (optimize (speed 2) (debug 1)))
-  (%tree-rec movements-shrinked nil 0))
+  @type list movements-shrinked
+  (let ((*min* (length movements-shrinked)))
+    (%tree-rec movements-shrinked nil 0)))
 
 (declaim (ftype (function (list list fixnum) (or fixnum null)) %tree-leaf))
 (defun %tree-leaf (this used-mutices i)
@@ -48,24 +52,25 @@ at carry-in (= position 0)."
      (if (mutices-no-conflict-p this used-mutices)
          (let ((next-mutices (cons this used-mutices))
                (len (length rest)))
-           (cons i
-                 (remove-duplicates
-                  (iter (for rest2 on rest)
-                        (for next-i
-                             from (the fixnum (+ 1 i))
-                             to (the fixnum (+ 1 i len)))
-                        @type fixnum next-i
-                        (when-let ((children
-                                    (%tree-rec
-                                     rest2
-                                     next-mutices
-                                     next-i)))
-                          ;; !!! USING NCONC !!!
-                          ;; Using NCONC in order to reduce consing.
-                          ;; This is justified because it is just accumulating the results
-                          ;; in each branch. This is the same as pushing things to accumelator.
-                          (collecting children)))
-                  :test #'equalp)))
+           (prog1
+               (cons i
+                     (remove-duplicates
+                      (iter (for rest2 on rest)
+                            (for next-i
+                                 from (the fixnum (+ 1 i))
+                                 to (the fixnum (+ 1 i len)))
+                            @type fixnum next-i
+                            (when-let ((children
+                                        (%tree-rec
+                                         rest2
+                                         next-mutices
+                                         next-i)))
+                              ;;(print children)
+                              (collecting children)))
+                      :test #'equal))
+             (when (< i *min*)
+               (setf *min* i)
+               (print i))))
          (%tree-rec rest
                     used-mutices
                     (1+ i))))))
