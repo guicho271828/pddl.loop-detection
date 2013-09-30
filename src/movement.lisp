@@ -36,25 +36,24 @@ its precondition or the effect."
 @export
 (defun %extract-movements (object schedule domain)
   (let (related indices)
-    (multiple-value-setq
-        (related indices)
-      (iter (for ta in schedule)
-            (for i from 0)
-            (when (related-to object ta)
-              (collect ta into related)
-              (collect i into indices))
-            (finally (return (values related indices)))))
+    (iter (for ta in schedule)
+          (for i from 0)
+          (when (related-to object ta)
+            (collect ta into %related)
+            (collect i into %indices))
+          (finally (setf related %related
+                         indices %indices)))
 
     (values
      (mapcar (compose
               (let ((owners (mapcar #'first (mutex-predicates domain))))
                 (lambda (states)
                   (remove-if-not
-                   (lambda (atomic-state)
-                     (some
-                      (rcurry #'predicate-more-specific-p atomic-state)
-                      owners))
-                   states)))
+                       (lambda (atomic-state)
+                         (some
+                          (curry #'predicate-more-specific-p atomic-state)
+                          owners))
+                       states)))
               (lambda (ta)
                 (match ta
                   ((timed-action
