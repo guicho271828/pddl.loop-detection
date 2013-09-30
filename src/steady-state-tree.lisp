@@ -68,7 +68,7 @@ at carry-in (= position 0)."
                                           next-mutices
                                           next-i)))
                                (collecting children)))
-                       :test #'equal))
+                       :test #'tree-duplication-test))
              (when (< i *min*)
                (setf *min* i)
                (print i))))
@@ -82,14 +82,10 @@ at carry-in (= position 0)."
 @export
 (defun tree-duplication-test (a b)
   (declare (optimize (speed 3) (debug 0) (safety 0) (space 0)))
-  (cond
-    ((and (typep a 'fixnum) (typep b 'fixnum))
-     (locally (declare (type fixnum a b))
-       (= a b)))
-    ((and (typep a 'cons) (typep b 'cons))
-     (locally (declare (type cons a b))
-       (tree-equal
-        a b :test
-        (lambda (c d)
-          (declare (type fixnum c d))
-          (= c d)))))))
+  (if (typep a 'fixnum)
+      (when (typep b 'fixnum)
+        (locally (declare (type fixnum a b))
+          (= a b)))
+      (when (typep b 'cons)
+        (locally (declare (type cons a b))
+          (= (the fixnum (car a)) (the fixnum (car b)))))))
