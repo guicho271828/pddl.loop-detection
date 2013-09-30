@@ -20,6 +20,8 @@ for each leaf node, the first structure requires only one cons, while
 the second requires N conses where N is the length of a steady state.
 |#
 
+
+(declaim (type fixnum *min*))
 (defvar *min*)
 
 @export @doc "returns a cons tree of steady states. Each steady state is
@@ -53,21 +55,20 @@ at carry-in (= position 0)."
          (let ((next-mutices (cons this used-mutices))
                (len (length rest)))
            (prog1
-               (cons i
-                     (remove-duplicates
-                      (iter (for rest2 on rest)
-                            (for next-i
-                                 from (the fixnum (+ 1 i))
-                                 to (the fixnum (+ 1 i len)))
-                            @type fixnum next-i
-                            (when-let ((children
-                                        (%tree-rec
-                                         rest2
-                                         next-mutices
-                                         next-i)))
-                              ;;(print children)
-                              (collecting children)))
-                      :test #'equal))
+               (lcons i
+                      (remove-duplicates
+                       (iter (for rest2 on rest)
+                             (for next-i
+                                  from (the fixnum (+ 1 i))
+                                  to (the fixnum (+ 1 i len)))
+                             @type fixnum next-i
+                             (when-let ((children
+                                         (%tree-rec
+                                          rest2
+                                          next-mutices
+                                          next-i)))
+                               (collecting children)))
+                       :test #'equal))
              (when (< i *min*)
                (setf *min* i)
                (print i))))

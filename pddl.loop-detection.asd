@@ -22,7 +22,9 @@
 	       (:module "src"
 		:depends-on (:package)
                 :components
-                ((:file :mutex)
+                ((:file :util)
+                 (:file :iterator :depends-on (:util))
+                 (:file :mutex)
 		 (:file :movement)
 		 (:file :steady-state)
                  (:file :steady-state-tree)

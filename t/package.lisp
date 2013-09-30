@@ -156,7 +156,70 @@ This file is a part of pddl.loop-detection project.
       
     (is (equal '(0 2 7 8) (funcall it)))
     (is (equal '(0 2 7 9) (funcall it)))
-    (is (equal '(0 5) (funcall it)))))
+    (is (equal '(0 5) (funcall it)))
+    (signals tree-exhausted (funcall it))))
+
+(test (lazy-tree-iterator :depends-on tree-iterator)
+  (let ((it (tree-iterator (llist 0 1 2) :lazy t)))
+    (is (equal '(0) (funcall it)))
+    (is (equal '(0 1) (funcall it)))
+    (is (equal '(0 2) (funcall it)))
+    (signals tree-exhausted (funcall it)))
+
+  (let ((it (tree-iterator (ltree (0
+                                   (1 2 3)
+                                   4
+                                   (2
+                                    (3 4 6)
+                                    (7 8 9))
+                                   5))
+                           :lazy t)))
+    (is (equal '(0) (funcall it)))
+    (is (equal '(0 1) (funcall it)))
+    (is (equal '(0 1 2) (funcall it)))
+    (is (equal '(0 1 3) (funcall it)))
+    (is (equal '(0 4) (funcall it)))
+    (is (equal '(0 2) (funcall it)))
+    (is (equal '(0 2 3) (funcall it)))
+    (is (equal '(0 2 3 4) (funcall it)))
+    (is (equal '(0 2 3 6) (funcall it)))
+    (is (equal '(0 2 7) (funcall it)))
+    (is (equal '(0 2 7 8) (funcall it)))
+    (is (equal '(0 2 7 9) (funcall it)))
+    (is (equal '(0 5) (funcall it)))
+    (signals tree-exhausted (funcall it)))
+
+  (let ((it (tree-iterator (ltree (0
+                                   (1 2 3)
+                                   4
+                                   (2
+                                    (3 4 6 (7 -1 9) (10 11) 12 13)
+                                    (7 8 9))
+                                   5))
+                           :lazy t)))
+    (is (equal '(0) (funcall it)))
+    (is (equal '(0 1) (funcall it)))
+    (is (equal '(0 1 2) (funcall it)))
+    (is (equal '(0 1 3) (funcall it)))
+    (is (equal '(0 4) (funcall it)))
+    (is (equal '(0 2) (funcall it)))
+    (is (equal '(0 2 3) (funcall it)))
+    (multiple-value-bind (value stack) (funcall it)
+      (is (equal '(0 2 3 4) value))
+      (is-true (ematch stack
+                 ((list* 3 4 _) t)))
+      (is-true (ematch (funcall it :wind-stack stack)
+                 ((list* 2 (list* 3 4 _) _) t))))
+
+    (multiple-value-bind (value stack) (funcall it)
+      (is (equal '(0 2 7) value))
+      (is-true (ematch stack
+                 ((cons 7 _) t))))
+      
+    (is (equal '(0 2 7 8) (funcall it)))
+    (is (equal '(0 2 7 9) (funcall it)))
+    (is (equal '(0 5) (funcall it)))
+    (signals tree-exhausted (funcall it))))
 
 (defvar steady-state-tree)
 (test (steady-state-tree :depends-on extract-movements)

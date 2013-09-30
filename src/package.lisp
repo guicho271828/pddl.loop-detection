@@ -20,6 +20,7 @@
         :alexandria
         :bordeaux-threads
         :lparallel)
+  (:shadow :force)
   (:shadowing-import-from
    :guicho-a* :cost)            ;resolve conflict with pddl:cost
   (:shadowing-import-from
