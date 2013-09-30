@@ -36,8 +36,18 @@ is waiting to be carried into the factory and where no mutex
 exists. Any of the resulting steady-states must have one base placed
 at carry-in."
 (defun exploit-steady-states (movements-shrinked)
-  (shrink-steady-states
-   (let ((movements-without-carry-in (cdr movements-shrinked)))
+  (unwind-protect
+       (handler-return ((storage-condition
+                         (lambda (c)
+                           @ignore c
+                           nil)))
+         (shrink-steady-states
+          (%exploit-steady-states movements-shrinked)))
+    (sb-ext:gc :full t)))
+
+@export
+(defun %exploit-steady-states (movements-shrinked)
+  (let ((movements-without-carry-in (cdr movements-shrinked)))
      (let ((max (length movements-without-carry-in)))
        (mapcon
         (lambda (rest)
@@ -45,7 +55,12 @@ at carry-in."
                         nil
                         '(0)
                         (1+ (- max (length rest)))))
-        movements-without-carry-in)))))
+        movements-without-carry-in))))
+
+@export
+(defun mutices-no-conflict-p (this used-mutices)
+  (null (intersection this used-mutices
+                      :test #'eqstate)))
 
 (defun %exploit-rec (movements-shrinked used-mutices base-positions i)
   ;(break+ used-mutices (car movements-shrinked))
@@ -55,28 +70,32 @@ at carry-in."
     ((list this)
      (%exploit-leaf this used-mutices base-positions i))
     ((list* this rest)
-     (if (null (intersection this used-mutices
-                             :test #'eqstate))
-         (list* (reverse (cons i base-positions))
-                (mapcon
-                 (lambda (rest2)
-                   (%exploit-rec
-                    rest2
-                    (append this used-mutices)
-                    (cons i base-positions)
-                    (+ 1 i (- (length rest)
-                              (length rest2)))))
-                 rest))
+     (if (mutices-no-conflict-p this used-mutices)
+         (let ((next-mutices (append this used-mutices))
+               (next-base-positions (cons i base-positions))
+               (len (length rest)))
+           (cons (reverse next-base-positions)
+                 (iter (for rest2 on rest)
+                       (for next-i from (+ 1 i) to (+ 1 i len))
+                       (when-let ((children
+                                   (%exploit-rec
+                                    rest2
+                                    next-mutices
+                                    next-base-positions
+                                    next-i)))
+                         ;; !!! USING NCONC !!!
+                         ;; Using NCONC in order to reduce consing.
+                         ;; This is justified because it is just accumulating the results
+                         ;; in each branch. This is the same as pushing things to accumelator.
+                         (nconcing children)))))
          (%exploit-rec rest
                        used-mutices
                        base-positions
                        (1+ i))))))
 
 (defun %exploit-leaf (this used-mutices base-positions i)
-  (if (null (intersection this used-mutices
-                          :test #'eqstate))
-      (list (reverse
-             (cons i base-positions)))
+  (if (mutices-no-conflict-p this used-mutices)
+      (list (reverse (cons i base-positions)))
       nil))
-      
-        
+
+
