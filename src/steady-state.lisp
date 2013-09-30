@@ -59,8 +59,12 @@ at carry-in."
 
 @export
 (defun mutices-no-conflict-p (this used-mutices)
-  (null (intersection this used-mutices
-                      :test #'eqstate)))
+  (dolist (bucket used-mutices)
+    (dolist (e1 this)
+      (dolist (e2 bucket)
+        (when (eqstate e1 e2)
+          (return-from mutices-no-conflict-p nil)))))
+  t)
 
 (defun %exploit-rec (movements-shrinked used-mutices base-positions i)
   ;(break+ used-mutices (car movements-shrinked))
@@ -71,7 +75,7 @@ at carry-in."
      (%exploit-leaf this used-mutices base-positions i))
     ((list* this rest)
      (if (mutices-no-conflict-p this used-mutices)
-         (let ((next-mutices (append this used-mutices))
+         (let ((next-mutices (cons this used-mutices))
                (next-base-positions (cons i base-positions))
                (len (length rest)))
            (cons (reverse next-base-positions)
