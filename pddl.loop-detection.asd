@@ -27,6 +27,7 @@
 		 (:file :steady-state)
                  (:file :steady-state-tree)
 		 (:file :simulator)
+		 (:file :simulator-with-tree)
 		 (:file :ranker)
 		 (:file :problem-builder)
                  (:file :write-problem)

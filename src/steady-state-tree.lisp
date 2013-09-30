@@ -44,13 +44,17 @@ at carry-in (= position 0)."
     ((list this)
      (%tree-leaf this used-mutices i))
     ((list* this rest)
+     @type cons rest
      (if (mutices-no-conflict-p this used-mutices)
          (let ((next-mutices (cons this used-mutices))
                (len (length rest)))
            (cons i
                  (remove-duplicates
                   (iter (for rest2 on rest)
-                        (for next-i from (+ 1 i) to (+ 1 i len))
+                        (for next-i
+                             from (the fixnum (+ 1 i))
+                             to (the fixnum (+ 1 i len)))
+                        @type fixnum next-i
                         (when-let ((children
                                     (%tree-rec
                                      rest2
@@ -61,7 +65,7 @@ at carry-in (= position 0)."
                           ;; This is justified because it is just accumulating the results
                           ;; in each branch. This is the same as pushing things to accumelator.
                           (collecting children)))
-                  :test #'tree-duplication-test)))
+                  :test #'equalp)))
          (%tree-rec rest
                     used-mutices
                     (1+ i))))))
