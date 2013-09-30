@@ -57,11 +57,18 @@ at carry-in."
                         (1+ (- max (length rest)))))
         movements-without-carry-in))))
 
+(declaim (ftype (function (list list) boolean) mutices-no-conflict-p))
 @export
 (defun mutices-no-conflict-p (this used-mutices)
+  (declare (optimize (speed 3) (debug 0) (safety 0) (space 0)))
+  @type list used-mutices
+  @type list this
   (dolist (bucket used-mutices)
+    @type list bucket
     (dolist (e1 this)
+      @type pddl-atomic-state e1
       (dolist (e2 bucket)
+        @type pddl-atomic-state e2
         (when (eqstate e1 e2)
           (return-from mutices-no-conflict-p nil)))))
   t)
