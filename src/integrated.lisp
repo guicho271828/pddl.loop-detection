@@ -17,7 +17,7 @@ Please wait a moment...~%"))
           (return-from mktemp path))))
 
 @export
-(defun exploit-loop-problems (unit-plan base-object)
+(defun exploit-loop-problems (unit-plan base-object &key verbose)
   (terpri *standard-output*)
   (pprint-logical-block (*standard-output*
                          nil
@@ -47,11 +47,11 @@ Please wait a moment...~%"))
                      (time (exploit-loopable-steady-states
                             movements
                             (exploit-steady-states movements)
-                            :verbose nil)))
+                            :verbose verbose)))
              base-type)))))))
 
 @export
-(defun exploit-loop-problems-tree (unit-plan base-object)
+(defun exploit-loop-problems-tree (unit-plan base-object &key verbose)
   (terpri *standard-output*)
   (pprint-logical-block (*standard-output*
                          nil
@@ -81,5 +81,5 @@ Please wait a moment...~%"))
                      (time (exploit-loopable-steady-state-tree
                             movements
                             (exploit-steady-state-tree movements)
-                            :verbose nil)))
+                            :verbose verbose)))
              base-type)))))))
