@@ -43,7 +43,13 @@
                             (progn ; success
                               (funcall-if-functionp after-success results)
                               (with-lock-held ((aref bucket-locks bases))
-                                (appendf (aref buckets bases) results)))
+                                ;; (with-lock-held (*print-lock*)
+                                ;;   (format *shared-output*
+                                ;;           "~& append length: ~a ss: ~w"
+                                ;;           (length (aref buckets bases))
+                                ;;           ss))
+                                (setf (aref buckets bases) (nconc results (aref buckets bases)))
+                                ))
                             (progn ; failure
                               (funcall-if-functionp after-failure)
                               (funcall it :wind-stack stack)))))))
