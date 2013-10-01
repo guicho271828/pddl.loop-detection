@@ -7,20 +7,6 @@
   `(,@(cdr steady-state) ,length))
 
 @export
-(defun same-end-loop-p (max a b)
-  (equalp (make-eol a max)
-          (make-eol b max)))
-
-(defun %shrink-bucket (bucket max)
-  (sort
-   (remove-duplicates
-    bucket
-    :test (curry #'same-end-loop-p max))
-   #'<
-   :key (lambda (lst)
-          (reduce (lambda (prev now) (+ now (* max prev))) (reverse lst)))))
-
-@export
 @doc "Shrinks the number of steady states. Built-in function of exploit-steady-states"
 (defun shrink-steady-states (steady-states)
   (let (acc)
