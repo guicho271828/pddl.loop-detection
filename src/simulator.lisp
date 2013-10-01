@@ -27,8 +27,8 @@
   ((complementary-node-class :initform 'state-node)))
 
 (defmethod generic-eq ((n1 state-node) (n2 state-node))
-  (equalp (current-state n1)
-          (current-state n2)))
+  (equal (current-state n1)
+         (current-state n2)))
 
 (defmethod cost ((tr transition))
   1)
@@ -51,7 +51,7 @@
 @export
 (defun search-loop-path (movements-shrinked steady-state
                          &key (verbose t) (limit MOST-POSITIVE-FIXNUM))
-  (let* ((*state-hash* (make-hash-table :test #'equalp))
+  (let* ((*state-hash* (make-hash-table :test #'equal))
          (goal (make-instance
                 'state-node
                 :movements movements-shrinked
