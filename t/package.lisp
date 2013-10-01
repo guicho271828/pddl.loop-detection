@@ -58,7 +58,7 @@ This file is a part of pddl.loop-detection project.
     (multiple-value-setq
 	(movements movements-indices)
       (%extract-movements 'b-0 schedule cell-assembly)))
-  (dolist (m (butlast (cdr movements-shrinked)))
+  (dolist (m (butlast (cdr movements)))
     (is-true m))
   (finishes
     (multiple-value-setq
