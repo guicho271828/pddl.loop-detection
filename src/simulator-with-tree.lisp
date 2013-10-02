@@ -27,7 +27,7 @@
                                      nil)))
                    (multiple-value-bind (ss stack) (funcall it)
                      (let* ((bases (1- (length ss))))
-                       (funcall-if-functionp before)
+                       (funcall-if-functionp before ss)
                        (cond
                          ;; forward-duplication-check
                          ((and forward-duplication-check-p
@@ -41,7 +41,7 @@
                                     (search-loop-path
                                      moves ss :verbose verbose)))
                             (progn ; success
-                              (funcall-if-functionp after-success results)
+                              (funcall-if-functionp after-success ss results)
                               (with-lock-held ((aref bucket-locks bases))
                                 ;; (with-lock-held (*print-lock*)
                                 ;;   (format *shared-output*
@@ -51,7 +51,7 @@
                                 (setf (aref buckets bases) (nconc results (aref buckets bases)))
                                 ))
                             (progn ; failure
-                              (funcall-if-functionp after-failure)
+                              (funcall-if-functionp after-failure ss)
                               (funcall it :wind-stack stack)))))))
                    (submit-task channel #'%exploit/thread)
                    t)))
@@ -71,14 +71,14 @@
                         forward-duplication-check-p
                         post-duplication-check-p)
     (let ((i 0)
-          (i-lock (make-lock "i"))
-          (max (length steady-state-tree)))
+          (i-lock (make-lock "i")))
       (%loop-verbosity-tree
-       (lambda ()
+       (lambda (ss)
+         @ignorable ss
          (with-lock-held (i-lock)
            (incf i)
            (with-lock-held (*print-lock*)
-             (format *shared-output* "~%~a/~a: " i max))))
+             (format *shared-output* "~%~a/???: " i))))
        nil
        nil
        (lambda (ss)
@@ -92,6 +92,32 @@
        moves
        t)))
 
+  (defun %verbose/search-tree (moves steady-state-tree
+                       forward-duplication-check-p
+                       post-duplication-check-p)
+    (let ((i 0)
+          (i-lock (make-lock "i")))
+      (%loop-verbosity-tree
+       (lambda (ss)
+         @ignorable ss
+         (with-lock-held (i-lock)
+           (incf i)
+           (with-lock-held (*print-lock*)
+             (format *shared-output* "~%~a/???: ~50,,,a" i ss))))
+       nil
+       nil
+       (lambda (ss)
+         @ignorable ss
+         (with-lock-held (*print-lock*)
+           (format *shared-output*
+                   " :  duplicated"
+                   )))
+       forward-duplication-check-p
+       post-duplication-check-p
+       steady-state-tree
+       moves
+       nil)))
+
   (defun %modest-tree (moves steady-state-tree
                        forward-duplication-check-p
                        post-duplication-check-p)
@@ -100,17 +126,20 @@
                               :initial-element #\Space
                               :fill-pointer 0)))
       (%loop-verbosity-tree
-       (lambda ()
+       (lambda (ss)
+         @ignorable ss
          (with-lock-held (*print-lock*)
            (when (= (fill-pointer buffer) 59)
              (loop for c across buffer
                 do (write-char c *shared-output*))
              (terpri *shared-output*)
              (setf (fill-pointer buffer) 0))))
-       (lambda (results)
+       (lambda (ss results)
+         @ignorable ss
          (with-lock-held (*print-lock*)
            (vector-push-extend (density-char (length results)) buffer)))
-       (lambda ()
+       (lambda (ss)
+         @ignorable ss
          (with-lock-held (*print-lock*)
            (vector-push-extend #\Space buffer)))
        (lambda (ss)
@@ -140,15 +169,17 @@
 start-of-loop is always the same list to the steady-state in the
 meaning of EQUALP."
     (declare (optimize (speed 3)))
-    (declare (inline %verbose
-                     %modest
-                     %none))
+    (declare (inline %verbose-tree
+                     %verbose/search-tree
+                     %modest-tree
+                     %none-tree))
     (macrolet ((%call (name) `(case duplication-check
                                 ((nil)           (,name movements-shrinked steady-state-tree nil nil))
                                 (:post-only    (,name movements-shrinked steady-state-tree nil t))
                                 (:forward-only (,name movements-shrinked steady-state-tree t nil))
                                 (otherwise     (,name movements-shrinked steady-state-tree t t)))))
       (case verbose
-        ((2 t)       (%call %verbose-tree))
+        ((3 t)       (%call %verbose-tree))
+        ((2 :no-search) (%call %verbose/search-tree))
         ((1 :modest) (%call %modest-tree))
         (otherwise   (%call %none-tree))))))
