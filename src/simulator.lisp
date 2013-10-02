@@ -27,16 +27,32 @@
   ((complementary-node-class :initform 'state-node)))
 
 (defmethod generic-eq ((n1 state-node) (n2 state-node))
+  (declare (optimize (speed 3) (debug 0)))
   (equal (current-state n1)
          (current-state n2)))
 
 (defmethod cost ((tr transition))
   1)
 (defmethod heuristic-cost-between ((n1 state-node) (n2 state-node))
-  ;; this value is always the same, so it is meaningless.
-  ;; (iter (for pos1 in (current-state n1))
-  ;;    (for pos2 in (current-state n2))
-  ;;    (summing (abs (- pos2 pos1))))
+  ;; +this value is always the same, so it is meaningless.+
+  ;; FALSE the above description is false.
+  ;; actually, for the plan that allowed a base to move in an non-optimal manner
+  ;; the truth is that THE BASE SHOULD GO BACKWARD after that wrong move.
+  ;; 
+  ;; So, the heuristic function is still possible.
+
+  ;; the heuristics below can be considered as an h+ heuristics.
+  ;; (declare (optimize (speed 3) (debug 0) (safety 0)))
+  ;; (let ((sum 0))
+  ;;   (declare (type fixnum sum))
+  ;;   (loop
+  ;;      for pos1 fixnum in (current-state n1)
+  ;;      for pos2 fixnum in (current-state n2)
+  ;;      do (setf sum (the fixnum
+  ;;                     (+ sum (the fixnum
+  ;;                              (abs (the fixnum
+  ;;                                     (- pos2 pos1))))))))
+  ;;   sum)
   0
   )
 
