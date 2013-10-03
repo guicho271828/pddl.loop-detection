@@ -53,25 +53,23 @@ Please wait a moment...~%"))
 @export
 (defun exploit-loop-problems-lazy (unit-plan base-object &key verbose)
   (terpri *standard-output*)
-  (pprint-logical-block (*standard-output*
-                         nil
-                         :per-line-prefix "; Preparation process: ")
-    (let* ((*problem* (problem unit-plan))
-           (*domain* (domain unit-plan))
-           (tmpdir (mktemp))
-           (base-type (type (object *problem* base-object))))
-      (let ((schedule (reschedule unit-plan
-                                  :minimum-slack
-                                  :verbose nil)))
-        (multiple-value-bind (movements movements-indices)
-            (extract-movements base-object schedule *domain*)
-          (return-from exploit-loop-problems-lazy
-            (values
+  (let* ((*problem* (problem unit-plan))
+         (*domain* (domain unit-plan))
+         (tmpdir (mktemp))
+         (base-type (type (object *problem* base-object))))
+    (let ((schedule (reschedule unit-plan
+                                :minimum-slack
+                                :verbose nil)))
+      (multiple-value-bind (movements movements-indices)
+          (extract-movements base-object schedule *domain*)
+        (return-from exploit-loop-problems-lazy
+          (values
+           (let ((problem *problem*)) ;; this should be lexical
              (label1 rec (cont)
                  (destructuring-bind (loop-plans . rest-lazy) (funcall cont)
                    (cons (write-problem
                           (build-steady-state-problem
-                           *problem*
+                           problem
                            (car loop-plans) ;; uses the first path only
                            schedule
                            movements
@@ -83,5 +81,5 @@ Please wait a moment...~%"))
                (rec (exploit-loopable-steady-state-lazy
                      movements
                      (exploit-steady-state-lazy movements)
-                     :verbose verbose)))
-             base-type)))))))
+                     :verbose verbose))))
+           base-type))))))
