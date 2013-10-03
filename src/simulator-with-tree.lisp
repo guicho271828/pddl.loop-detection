@@ -1,13 +1,15 @@
 (in-package :pddl.loop-detection)
 (use-syntax :annot)
 
+@export
+(define-condition steady-state-condition (condition)
+  ((steady-state :accessor steady-state :initarg :steady-state)))
+
+(export '(steady-state skip-this wind-stack))
+
 (progn
   (declaim (inline %loop-verbosity-lazy))
-  (defun %loop-verbosity-lazy (before
-                               after-success
-                               after-failure
-                               after-duplication
-                               forward-duplication-check-p
+  (defun %loop-verbosity-lazy (forward-duplication-check-p
                                post-duplication-check-p
                                steady-state-tree
                                moves
@@ -20,46 +22,53 @@
         (setf (aref bucket-locks j) (make-lock)))
       (label1 rec ()
           (handler-return
-              ((tree-exhausted (lambda (c) (declare (ignore c)) buckets)))
+              ((tree-exhausted (lambda (c)
+                                 (declare (ignore c))
+                                 (values nil buckets))))
             (multiple-value-bind (ss stack) (funcall it)
+              (restart-bind
+                  ((skip-this (lambda ()
+                           (return-from rec (rec))))
+                   (wind-stack (lambda ()
+                                 (funcall it :wind-stack stack)
+                                 (return-from rec (rec)))))
+                (signal 'steady-state-condition :steady-state ss))
+              
               (let* ((bases (1- (length ss))))
-                (funcall-if-functionp before ss)
-                (cond
-                  ;; forward-duplication-check
-                  ((and forward-duplication-check-p
-                        (%forward-duplication-check
-                         ss (make-eol ss m-num) (aref buckets bases)))
-                   (funcall-if-functionp after-duplication ss)
-                   (rec)) ; next iteration
-                  
-                  (t
-                   (if-let ((results
-                             (search-loop-path
-                              moves ss :verbose verbose)))
-                     ;; success
-                     (progn
-                       (funcall-if-functionp after-success ss results)
-                       (with-lock-held ((aref bucket-locks bases))
-                         (let ((bucket (nconc results (aref buckets bases))))
-                           (multiple-value-bind (new-bucket duplicated?)
-                               (if post-duplication-check-p
-                                   (%post-duplication-check/bucket bucket)
-                                   bucket)
-                             (setf (aref buckets bases) new-bucket)
-                             (if duplicated?
-                                 (rec)
-                                 (values (cons results #'rec) buckets it))))))
-                     (progn ; failure
-                       (funcall-if-functionp after-failure ss)
-                       (funcall it :wind-stack stack)
-                       (rec))))))))
+                ;; forward-duplication-check
+                (when (and forward-duplication-check-p
+                           (%forward-duplication-check
+                            ss
+                            (make-eol ss m-num)
+                            (aref buckets bases)))
+                  (return-from rec (rec)))
+                
+                (when-let ((results
+                            (search-loop-path
+                             moves ss :verbose verbose)))
+                  ;; success
+                  (let (new-bucket duplicated?)
+                    (with-lock-held ((aref bucket-locks bases))
+                      (let ((bucket (nconc results (aref buckets bases))))
+                        (multiple-value-setq (new-bucket duplicated?)
+                          (if post-duplication-check-p
+                              (%post-duplication-check/bucket bucket)
+                              bucket))
+                        (setf (aref buckets bases) new-bucket)))
+                    (return-from rec
+                      (if duplicated?
+                          (rec)
+                          (values (cons results #'rec) buckets it))))))
+              
+              ;; failure
+              (funcall it :wind-stack stack)
+              (rec)))
         #'rec)))
 
   (defun %none-lazy (moves steady-state-tree
                      forward-duplication-check-p
                      post-duplication-check-p)
-    (%loop-verbosity-lazy nil nil nil nil
-                          forward-duplication-check-p
+    (%loop-verbosity-lazy forward-duplication-check-p
                           post-duplication-check-p
                           steady-state-tree
                           moves
