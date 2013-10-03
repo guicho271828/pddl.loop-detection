@@ -50,16 +50,19 @@ iterator yields:
                ;; (format t "~& stack ~w is not found!" wind-stack)
                ))
           
+          ;; first time
           ((and (null env) (null stack) first)
-           ;; first time
            (push tree stack)
            (push (cdr tree) env)
            (setf first nil)
            (values (list (first tree))
                    (car stack)))
+          
+          ;; tree exhausted
           ((and (null env) (null stack))
            (signal 'tree-exhausted))
           
+          ;; normal propagation
           ((and env (first env) (consp (first env)) stack)
            (let ((opened (pop (first env))))
              (multiple-value-prog1
@@ -80,18 +83,14 @@ iterator yields:
                      (pop env)
                      (pop stack)))))
           
+          ;; backtrack
           ((and env (first env) (atom (first env)) stack)
-           ;; backtrack
            (multiple-value-prog1
                (values 
                 (nreverse (cons (first env) (mapcar #'first stack)))
                 (car stack))
              (pop env)))
           (t (error "no match ~w ~w" env stack)))))))
-
-
-
-
 
 
 
@@ -126,9 +125,10 @@ the child nodes can be obtained by funcalling each LAMBDA."
           ;; first time
           ((and (null env) (null stack) first)
            (push tree stack)
+           (forcef (car tree)) ; ensure the car is forced
            (push (fcdr tree) env)
            (setf first nil)
-           (values (list (first tree))
+           (values (list (fcar tree))
                    (car stack)))
 
           ;; tree exhausted
@@ -140,12 +140,13 @@ the child nodes can be obtained by funcalling each LAMBDA."
            (let ((opened (fpop (first env))))
              (multiple-value-prog1
                  (cond
-                   ((atom opened)
+                   ((atom opened) ; leaf node
                     (values 
                      (nreverse (cons opened (mapcar #'first stack)))
                      (car stack)))
-                   ((consp opened)
+                   ((consp opened) ; non-leaf node
                     (push opened stack)
+                    (forcef (car opened)) ; ensure the car is forced
                     (push (fcdr opened) env)
                     (values 
                      (nreverse (mapcar #'first stack))
@@ -156,8 +157,8 @@ the child nodes can be obtained by funcalling each LAMBDA."
                      (pop env)
                      (pop stack)))))
           
+          ;; backtrack
           ((and env (first env) (atom (first env)) stack)
-           ;; backtrack
            (multiple-value-prog1
                (values 
                 (nreverse (cons (first env) (mapcar #'first stack)))

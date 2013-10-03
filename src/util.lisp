@@ -7,9 +7,22 @@
       thunk))
 
 @export
+(defmacro forcef (place)
+  (multiple-value-bind (vars vals store-vars writer reader)
+      (get-setf-expansion place)
+    @ignorable reader
+    `(let* (,@(iter (for var in vars)
+                    (for val in vals)
+                    (collect `(,var ,val)))
+            (,(car store-vars) (force ,reader)))
+       ,writer)))
+
+
+@export
 (defmacro lcons (a b)
   "cons whose cdr is lazy"
-  `(cons ,a (lambda () ,b)))
+  `(cons (lambda () ,a)
+         (lambda () ,b)))
 
 @export
 (defmacro llist (a &rest args)
@@ -24,14 +37,24 @@
 
 @export
 (defun fcdr (lcons)
-  (let ((val (force (cdr lcons))))
-    (setf (cdr lcons) val)
-    val))
+  (forcef (cdr lcons)))
+
+@export
+(defun fcar (lcons)
+  (forcef (car lcons)))
 
 @export
 (defmacro fpop (place)
-  (let ((value place))
-    (once-only (value)
-      `(prog1 (car ,value) (setf ,place (fcdr ,value))))))
+  (multiple-value-bind (vars vals store-vars writer reader)
+      (get-setf-expansion place)
+    @ignorable reader writer
+    `(let* (,@(iter (for var in vars)
+                    (for val in vals)
+                    (collect `(,var ,val)))
+            (,(car store-vars) (force (cdr ,reader))))
+       (prog1
+           (fcar ,reader)
+         ,writer))))
 
-;; (pop (first a))
+;; (fpop (aref a i j))
+;; (fpop (first (progn (incf i) a)))
