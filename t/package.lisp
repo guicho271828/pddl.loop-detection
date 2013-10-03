@@ -31,15 +31,6 @@ This file is a part of pddl.loop-detection project.
    cell-assembly-model2b-2-7
    :minimum-slack))
 
-;; 輸送型のアクションを検出できれば - 場所がわかるかも。
-;; 
-;; どうやら、ベースごとのアクション列は同じみたいだ。(n=2の場合。)
-;; 理論的に検証できるか?
-;; 
-;; 今は lama-2011-opt だが、sat ではどうか?
-
-;; 場所の列だけでのか?
-
 ;; 別にアクション列は同じじゃなかった。
 ;; (test same-actions-per-base
 ;;   (is (every (lambda (ta0 ta1)
@@ -98,142 +89,6 @@ This file is a part of pddl.loop-detection project.
                  movements-shrinked
                  steady-states :verbose :modest)))))
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;; test tree
-
-(test tree-iterator
-  (let ((it (tree-iterator '(0 1 2))))
-    (is (equal '(0) (funcall it)))
-    (is (equal '(0 1) (funcall it)))
-    (is (equal '(0 2) (funcall it))))
-
-  (let ((it (tree-iterator '(0
-                             (1 2 3)
-                             4
-                             (2
-                              (3 4 6)
-                              (7 8 9))
-                             5))))
-    (is (equal '(0) (funcall it)))
-    (is (equal '(0 1) (funcall it)))
-    (is (equal '(0 1 2) (funcall it)))
-    (is (equal '(0 1 3) (funcall it)))
-    (is (equal '(0 4) (funcall it)))
-    (is (equal '(0 2) (funcall it)))
-    (is (equal '(0 2 3) (funcall it)))
-    (is (equal '(0 2 3 4) (funcall it)))
-    (is (equal '(0 2 3 6) (funcall it)))
-    (is (equal '(0 2 7) (funcall it)))
-    (is (equal '(0 2 7 8) (funcall it)))
-    (is (equal '(0 2 7 9) (funcall it)))
-    (is (equal '(0 5) (funcall it))))
-
-  (let ((it (tree-iterator '(0
-                             (1 2 3)
-                             4
-                             (2
-                              (3 4 6 (7 -1 9) (10 11) 12 13)
-                              (7 8 9))
-                             5))))
-    (is (equal '(0) (funcall it)))
-    (is (equal '(0 1) (funcall it)))
-    (is (equal '(0 1 2) (funcall it)))
-    (is (equal '(0 1 3) (funcall it)))
-    (is (equal '(0 4) (funcall it)))
-    (is (equal '(0 2) (funcall it)))
-    (is (equal '(0 2 3) (funcall it)))
-    (multiple-value-bind (value stack) (funcall it)
-      (is (equal '(0 2 3 4) value))
-      (is (equalp '(3 4 6 (7 -1 9) (10 11) 12 13) stack))
-      (is (equalp '(2
-                    (3 4 6 (7 -1 9) (10 11) 12 13)
-                    (7 8 9))
-                  (funcall it :wind-stack stack))))
-
-    (multiple-value-bind (value stack) (funcall it)
-      (is (equal '(0 2 7) value))
-      (is (equalp '(7 8 9) stack)))
-      
-    (is (equal '(0 2 7 8) (funcall it)))
-    (is (equal '(0 2 7 9) (funcall it)))
-    (is (equal '(0 5) (funcall it)))
-    (signals tree-exhausted (funcall it))))
-
-(test (lazy-tree-iterator :depends-on tree-iterator)
-  (let ((it (tree-iterator (llist 0 1 2) :lazy t)))
-    (is (equal '(0) (funcall it)))
-    (is (equal '(0 1) (funcall it)))
-    (is (equal '(0 2) (funcall it)))
-    (signals tree-exhausted (funcall it)))
-
-  (let ((it (tree-iterator (ltree (0
-                                   (1 2 3)
-                                   4
-                                   (2
-                                    (3 4 6)
-                                    (7 8 9))
-                                   5))
-                           :lazy t)))
-    (is (equal '(0) (funcall it)))
-    (is (equal '(0 1) (funcall it)))
-    (is (equal '(0 1 2) (funcall it)))
-    (is (equal '(0 1 3) (funcall it)))
-    (is (equal '(0 4) (funcall it)))
-    (is (equal '(0 2) (funcall it)))
-    (is (equal '(0 2 3) (funcall it)))
-    (is (equal '(0 2 3 4) (funcall it)))
-    (is (equal '(0 2 3 6) (funcall it)))
-    (is (equal '(0 2 7) (funcall it)))
-    (is (equal '(0 2 7 8) (funcall it)))
-    (is (equal '(0 2 7 9) (funcall it)))
-    (is (equal '(0 5) (funcall it)))
-    (signals tree-exhausted (funcall it)))
-
-  (let ((it (tree-iterator (ltree (0
-                                   (1 2 3)
-                                   4
-                                   (2
-                                    (3 4 6 (7 -1 9) (10 11) 12 13)
-                                    (7 8 9))
-                                   5))
-                           :lazy t)))
-    (is (equal '(0) (funcall it)))
-    (is (equal '(0 1) (funcall it)))
-    (is (equal '(0 1 2) (funcall it)))
-    (is (equal '(0 1 3) (funcall it)))
-    (is (equal '(0 4) (funcall it)))
-    (is (equal '(0 2) (funcall it)))
-    (is (equal '(0 2 3) (funcall it)))
-    (multiple-value-bind (value stack) (funcall it)
-      (is (equal '(0 2 3 4) value))
-      (is-true (ematch stack
-                 ((list* 3 4 _) t)))
-      (is-true (ematch (funcall it :wind-stack stack)
-                 ((list* 2 (list* 3 4 _) _) t))))
-
-    (multiple-value-bind (value stack) (funcall it)
-      (is (equal '(0 2 7) value))
-      (is-true (ematch stack
-                 ((cons 7 _) t))))
-      
-    (is (equal '(0 2 7 8) (funcall it)))
-    (is (equal '(0 2 7 9) (funcall it)))
-    (is (equal '(0 5) (funcall it)))
-    (signals tree-exhausted (funcall it))))
-
-(defvar steady-state-tree)
-(test (steady-state-tree :depends-on extract-movements)
-  (finishes
-    (setf steady-state-tree
-	  (exploit-steady-state-tree movements-shrinked))))
-
-(defvar loopable-steady-state-tree)
-(test (loopable-steady-state-tree :depends-on loopable-steady-states)
-  (finishes
-    (setf loopable-steady-state-tree
-          (exploit-loopable-steady-state-tree
-           movements-shrinked steady-state-tree :verbose :modest))))
-
 (defparameter prob
   cell-assembly-model2b-2)
 (defparameter base-type
@@ -258,13 +113,6 @@ This file is a part of pddl.loop-detection project.
             (problem2 (curry #'random-elt steady-state-problems)
                       (not (eq problem1 problem2))))
     (is-false (equal (goal problem1) (goal problem2)))))
-
-(test the-test
-  (is-true 5)
-  (is (= 5 5))
-  (is (identity t))
-  (is-false nil))
-
 
 ;; state が 自分のmutexになっているようなowner命題を探す。
 ;; この計算を行うためには owner,mutex,indicesが必要
@@ -367,7 +215,4 @@ no instance of owner predicate
   (terpri)
   (finishes
     (exploit-loop-problems cell-assembly-model2b-2-7 'b-0)))
-(test integrated-tree
-  (terpri)
-  (finishes
-    (exploit-loop-problems-tree cell-assembly-model2b-2-7 'b-0)))
+
