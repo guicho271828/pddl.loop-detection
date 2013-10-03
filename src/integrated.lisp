@@ -51,7 +51,7 @@ Please wait a moment...~%"))
              base-type)))))))
 
 @export
-(defun exploit-loop-problems-tree (unit-plan base-object &key verbose)
+(defun exploit-loop-problems-lazy (unit-plan base-object &key verbose)
   (terpri *standard-output*)
   (pprint-logical-block (*standard-output*
                          nil
@@ -65,21 +65,23 @@ Please wait a moment...~%"))
                                   :verbose nil)))
         (multiple-value-bind (movements movements-indices)
             (extract-movements base-object schedule *domain*)
-          (message)
-          (return-from exploit-loop-problems-tree
+          (return-from exploit-loop-problems-lazy
             (values
-             (mapcar (lambda (loop-plan)
-                       (write-problem
-                        (build-steady-state-problem
-                         *problem*
-                         loop-plan
-                         schedule
-                         movements
-                         movements-indices
-                         base-type)
-                        tmpdir))
-                     (time (exploit-loopable-steady-state-tree
-                            movements
-                            (exploit-steady-state-tree movements)
-                            :verbose verbose)))
+             (label1 rec (cont)
+                 (destructuring-bind (loop-plans . rest-lazy) (funcall cont)
+                   (cons (write-problem
+                          (build-steady-state-problem
+                           *problem*
+                           (car loop-plans) ;; uses the first path only
+                           schedule
+                           movements
+                           movements-indices
+                           base-type)
+                          tmpdir)
+                         (lambda ()
+                           (rec rest-lazy))))
+               (rec (exploit-loopable-steady-state-lazy
+                     movements
+                     (exploit-steady-state-lazy movements)
+                     :verbose verbose)))
              base-type)))))))
