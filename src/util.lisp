@@ -1,7 +1,6 @@
 (in-package :pddl.loop-detection)
 (use-syntax :annot)
 
-@export
 (defun force (thunk)
   (if (functionp thunk)
       (funcall thunk)
