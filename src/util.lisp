@@ -1,6 +1,7 @@
 (in-package :pddl.loop-detection)
 (use-syntax :annot)
 
+@export
 (defun force (thunk)
   (if (functionp thunk)
       (funcall thunk)
@@ -69,13 +70,14 @@
   (multiple-value-bind (vars vals store-vars writer reader)
       (get-setf-expansion place)
     @ignorable reader writer
-    `(let* (,@(iter (for var in vars)
-                    (for val in vals)
-                    (collect `(,var ,val)))
-            (,(car store-vars) (force (cdr ,reader))))
-       (prog1
-           (fcar ,reader)
-         ,writer))))
+    
+    (let ((list-head (gensym)))
+      `(let* (,@(mapcar #'list vars vals)
+              (,list-head ,reader)
+                (,(car store-vars) (fcdr ,list-head))
+                ,@(cdr store-vars))
+         ,writer
+         (fcar ,list-head)))))
 
 @export
 (defmacro lpush (obj place)

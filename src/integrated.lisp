@@ -62,24 +62,23 @@ Please wait a moment...~%"))
                                 :verbose nil)))
       (multiple-value-bind (movements movements-indices)
           (extract-movements base-object schedule *domain*)
-        (return-from exploit-loop-problems-lazy
-          (values
-           (let ((problem *problem*)) ;; this should be lexical
-             (label1 rec (cont)
-                 (destructuring-bind (loop-plans . rest-lazy) (funcall cont)
-                   (cons (write-problem
-                          (build-steady-state-problem
-                           problem
-                           (car loop-plans) ;; uses the first path only
-                           schedule
-                           movements
-                           movements-indices
-                           base-type)
-                          tmpdir)
-                         (lambda ()
-                           (rec rest-lazy))))
-               (rec (exploit-loopable-steady-state-lazy
-                     movements
-                     (exploit-steady-state-lazy movements)
-                     :verbose verbose))))
-           base-type))))))
+        (values
+         (let ((problem *problem*)) ;; this should be lexical
+           (label1 rec (cont)
+               (destructuring-bind (loop-plans . rest-lazy) (funcall cont)
+                 (cons (write-problem
+                        (build-steady-state-problem
+                         problem
+                         (car loop-plans) ;; uses the first path only
+                         schedule
+                         movements
+                         movements-indices
+                         base-type)
+                        tmpdir)
+                       (lambda ()
+                         (rec rest-lazy))))
+             (rec (exploit-loopable-steady-state-lazy
+                   movements
+                   (exploit-steady-state-lazy movements)
+                   :verbose verbose))))
+         base-type)))))
