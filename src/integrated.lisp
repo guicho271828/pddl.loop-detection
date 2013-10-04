@@ -65,20 +65,22 @@ Please wait a moment...~%"))
         (values
          (let ((problem *problem*)) ;; this should be lexical
            (label1 rec (cont)
-               (destructuring-bind (loop-plans . rest-lazy) (funcall cont)
-                 (cons (write-problem
-                        (build-steady-state-problem
-                         problem
-                         (car loop-plans) ;; uses the first path only
-                         schedule
-                         movements
-                         movements-indices
-                         base-type)
-                        tmpdir)
-                       (lambda ()
-                         (rec rest-lazy))))
-             (rec (exploit-loopable-steady-state-lazy
-                   movements
-                   (exploit-steady-state-lazy movements)
-                   :verbose verbose))))
+               (ematch (funcall cont)
+                 ((cons loop-plans rest-lazy)
+                  (lcons (write-problem
+                          (build-steady-state-problem
+                           problem
+                           (car loop-plans) ;; uses the first path only
+                           schedule
+                           movements
+                           movements-indices
+                           base-type)
+                          tmpdir)
+                         (rec rest-lazy)))
+                 (nil nil))
+             (curry #'rec
+              (exploit-loopable-steady-state-lazy
+               movements
+               (exploit-steady-state-lazy movements)
+               :verbose verbose))))
          base-type)))))

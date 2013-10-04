@@ -2,7 +2,7 @@
 (use-syntax :annot)
 
 @export
-(define-condition steady-state-condition (condition)
+(define-condition steady-state-condition (error)
   ((steady-state :accessor steady-state :initarg :steady-state)))
 
 (export '(steady-state skip-this wind-stack))
@@ -25,44 +25,55 @@
               ((tree-exhausted (lambda (c)
                                  (declare (ignore c))
                                  (values nil buckets))))
-            (multiple-value-bind (ss stack) (funcall it)
-              (restart-bind
-                  ((skip-this (lambda ()
-                           (return-from rec (rec))))
-                   (wind-stack (lambda ()
-                                 (funcall it :wind-stack stack)
-                                 (return-from rec (rec)))))
-                (signal 'steady-state-condition :steady-state ss))
-              
-              (let* ((bases (1- (length ss))))
-                ;; forward-duplication-check
-                (when (and forward-duplication-check-p
-                           (%forward-duplication-check
-                            ss
-                            (make-eol ss m-num)
-                            (aref buckets bases)))
-                  (return-from rec (rec)))
-                
-                (when-let ((results
-                            (search-loop-path
-                             moves ss :verbose verbose)))
-                  ;; success
-                  (let (new-bucket duplicated?)
-                    (with-lock-held ((aref bucket-locks bases))
-                      (let ((bucket (nconc results (aref buckets bases))))
-                        (multiple-value-setq (new-bucket duplicated?)
-                          (if post-duplication-check-p
-                              (%post-duplication-check/bucket bucket)
-                              bucket))
-                        (setf (aref buckets bases) new-bucket)))
-                    (return-from rec
-                      (if duplicated?
-                          (rec)
-                          (values (cons results #'rec) buckets it))))))
-              
-              ;; failure
-              (funcall it :wind-stack stack)
-              (rec)))
+            (let (ss stack)
+              (tagbody
+               :start
+                 (multiple-value-setq (ss stack) (funcall it))
+                 (format t "~&Fetching ~w" ss)
+                 (restart-bind
+                     ((skip-this (lambda ()
+                                   (format t " ... Skipping")
+                                   (go :start)))
+                      (wind-stack (lambda ()
+                                    (format t " ... Winding")
+                                    (funcall it :wind-stack stack)
+                                    (go :start)))
+                      (continue (lambda () (go :cont))))
+                   (error 'steady-state-condition :steady-state ss))
+                 
+               :cont
+                 
+                 (let* ((bases (1- (length ss))))
+                   ;; forward-duplication-check
+                   (when (and forward-duplication-check-p
+                              (%forward-duplication-check
+                               ss
+                               (make-eol ss m-num)
+                               (aref buckets bases)))
+                     (format t " ... Duplicated")
+                     (go :start))
+                   
+                   (when-let ((results
+                               (search-loop-path
+                                moves ss :verbose verbose)))
+                     ;; success
+                     (let (new-bucket duplicated?)
+                       (with-lock-held ((aref bucket-locks bases))
+                         (let ((bucket (nconc results (aref buckets bases))))
+                           (multiple-value-setq (new-bucket duplicated?)
+                             (if post-duplication-check-p
+                                 (%post-duplication-check/bucket bucket)
+                                 bucket))
+                           (setf (aref buckets bases) new-bucket)))
+                       (if duplicated?
+                           (go :start)
+                           (return-from rec
+                             (values (cons results #'rec) buckets it))))))
+                 
+                 ;; failure
+                 (format t " ... No loop")
+                 (funcall it :wind-stack stack)
+                 (go :start))))
         #'rec)))
 
   (defun %none-lazy (moves steady-state-tree
