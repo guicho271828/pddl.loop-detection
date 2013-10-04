@@ -7,15 +7,6 @@
           "~2&Exploiting loopable steady-states from the movements.
 Please wait a moment...~%"))
 
-(defun mktemp ()
-  (iter (for path = (merge-pathnames
-                     (format nil "pddl.tmp.~x"
-                             (random MOST-POSITIVE-FIXNUM))
-                     #p"/tmp/"))
-        (unless (directory-exists-p path)
-          (ensure-directories-exist path :verbose t)
-          (return-from mktemp path))))
-
 @export
 (defun exploit-loop-problems (unit-plan base-object &key verbose)
   (terpri *standard-output*)
@@ -24,7 +15,7 @@ Please wait a moment...~%"))
                          :per-line-prefix "; Preparation process: ")
     (let* ((*problem* (problem unit-plan))
            (*domain* (domain unit-plan))
-           (tmpdir (mktemp))
+           (tmpdir (mktemp :pddl))
            (base-type (type (object *problem* base-object))))
       (let ((schedule (reschedule unit-plan
                                   :minimum-slack
