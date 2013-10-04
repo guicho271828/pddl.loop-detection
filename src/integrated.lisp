@@ -35,15 +35,16 @@ Please wait a moment...~%"))
           (return-from exploit-loop-problems
             (values
              (mapcar (lambda (loop-plan)
-                       (write-problem
-                        (build-steady-state-problem
-                         *problem*
-                         loop-plan
-                         schedule
-                         movements
-                         movements-indices
-                         base-type)
-                        tmpdir))
+                       (list (write-problem
+                              (build-steady-state-problem
+                               *problem*
+                               loop-plan
+                               schedule
+                               movements
+                               movements-indices
+                               base-type)
+                              tmpdir)
+                             (caar loop-plan)))
                      (time (exploit-loopable-steady-states
                             movements
                             (exploit-steady-states movements)
@@ -67,15 +68,16 @@ Please wait a moment...~%"))
            (label1 rec (cont)
                (ematch (funcall cont)
                  ((cons loop-plans rest-lazy)
-                  (lcons (write-problem
-                          (build-steady-state-problem
-                           problem
-                           (car loop-plans) ;; uses the first path only
-                           schedule
-                           movements
-                           movements-indices
-                           base-type)
-                          tmpdir)
+                  (lcons (list (write-problem
+                                (build-steady-state-problem
+                                 problem
+                                 (car loop-plans) ;; uses the first path only
+                                 schedule
+                                 movements
+                                 movements-indices
+                                 base-type)
+                                tmpdir)
+                               (caar loop-plans))
                          (rec rest-lazy)))
                  (nil nil))
              (curry #'rec
