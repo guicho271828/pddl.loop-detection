@@ -70,14 +70,15 @@
   (multiple-value-bind (vars vals store-vars writer reader)
       (get-setf-expansion place)
     @ignorable reader writer
-    
-    (let ((list-head (gensym)))
+    (with-gensyms (list-head car)
       `(let* (,@(mapcar #'list vars vals)
-              (,list-head ,reader)
-                (,(car store-vars) (fcdr ,list-head))
-                ,@(cdr store-vars))
-         ,writer
-         (fcar ,list-head)))))
+              (,list-head ,reader))
+         (when ,list-head
+           (let* ((,car (fcar ,list-head))
+                  (,(car store-vars) (fcdr ,list-head))
+                  ,@(cdr store-vars))
+             ,writer
+             ,car))))))
 
 @export
 (defmacro lpush (obj place)
