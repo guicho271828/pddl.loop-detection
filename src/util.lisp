@@ -144,3 +144,9 @@
 ;;   "Apply FUNCTION to successive CDRs of lists. Return NCONC of results."
 ;;   (fmap1 function (cons list more-lists) :nconc nil))
 
+
+@export
+(defmacro llet (bindings &body body)
+  `(let (,@(iter (for (var value) in bindings)
+                 (collect `(,var (lambda () ,value)))))
+     ,@body))
