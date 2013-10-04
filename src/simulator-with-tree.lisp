@@ -29,7 +29,7 @@
               (tagbody
                :start
                  (multiple-value-setq (ss stack) (funcall it))
-                 (format t "~&Fetching ~w" ss)
+                 (format t "~&Fetching ~w " ss)
                  (restart-bind
                      ((skip-this (lambda ()
                                    (format t " ... Skipping")
