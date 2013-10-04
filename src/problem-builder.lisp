@@ -22,7 +22,7 @@
                    :init init
                    :metric metric)
      (let* ((base-type-p (rcurry #'pddl-typep type))
-            (objects (categorize objs :key (rcurry #'pddl-typep type)))
+            (objects (categorize objs :key base-type-p))
             (objects/bases (gethash nil objects))
             (bases         (gethash t   objects))
             (init (categorize 
