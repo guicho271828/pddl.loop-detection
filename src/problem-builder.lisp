@@ -35,11 +35,12 @@
        (let* ((*problem*
                (pddl-problem
                 :name (apply #'concatenate-symbols
-                             unit-name 'STEADY-STATE ss)
+                             unit-name 'ss ss)
                 :objects objects/bases ; warning!! their PROBLEM slot still refers
                 :init init/bases       ; warning!! to the old problem!
                 :goal (list 'and)
-                :metric metric)))
+                :metric metric))
+              loop-bases)
 
          ;; Add new objects, their corresponding initial states and
          ;; the goal conditions.
@@ -47,6 +48,7 @@
            ;; example: ss = (0 1 2 9)
            (for position in ss)
            (for base = (pddl-object :name (gen-base position) :type type))
+           (push base loop-bases)
            (for prototype-atomic-states = 
                 (remove-if-not
                  (lambda (atomic-state)
@@ -68,6 +70,7 @@
             (%step3 (positive-predicates
                      (goal unit-problem)) base base-type-p)))
          (%step4 mutices)
+         (%step5 loop-bases)
          
          *problem*)))))
 
@@ -108,7 +111,7 @@
       ((list* _ _ _ :release _)))))
 
 (defun %step3 (prototype-atomic-states base base-type-p)
-  "Add the goal description."
+  "Add the goal description related to the bases."
   (iter
     (for proto in prototype-atomic-states)
     (match proto
@@ -121,9 +124,9 @@
              (cdr (goal *problem*)))))))
 
 (defun %step4 (mutices)
-  "Ensures every mutex-predicates is added to INIT if necessary.
-Also, ensures every release-predicates is removed from INIT if necessary.
-The owner is already added in the previous step."
+  "Ensures every mutex-predicates are added to INIT if necessary.
+Also, ensures every release-predicates are removed from INIT if necessary.
+The owners are already added in the previous step."
   (iter
     (for mutex in mutices)
     (match mutex
@@ -148,3 +151,9 @@ The owner is already added in the previous step."
                            (%matches-to-mutex-p release indices owner state)))
                     (init *problem*))))))))
 
+(defun %step5 (bases)
+  "Ensures all states except mutices and owners are restored to the loop initial state."
+  (appendf (cdr (goal *problem*))
+           (remove-if (lambda (state)
+                        (some (rcurry #'related-to state) bases))
+                      (states-only (init *problem*)))))
