@@ -15,6 +15,7 @@
                                    movements-shrinked
                                    movements-indices-shrinked
                                    type)
+  (assert (typep type 'pddl-type))
   (ematch unit-problem
     ((pddl-problem :name unit-name
                    :domain *domain*
@@ -52,8 +53,7 @@
            (for prototype-atomic-states = 
                 (remove-if-not
                  (lambda (atomic-state)
-                   (and (typep atomic-state 'pddl-atomic-state)
-                        (some (rcurry #'related-to atomic-state) bases)))
+                   (some (rcurry #'related-to atomic-state) bases))
                  (timed-state-state
                   (timed-action-end
                    (nth (nth position movements-indices-shrinked)
@@ -84,10 +84,23 @@
    with a new object in the steady-state."
   (iter
     (for proto in prototype-atomic-states)
-    (match proto
+    (ematch proto
       ((pddl-atomic-state name parameters)
        (push (pddl-atomic-state
               :name name
+              :parameters (substitute-if base
+                                         base-type-p
+                                         parameters))
+             (init *problem*)))
+      ((pddl-function-state name parameters type value body)
+       ;; !!! CAUTION !!! currently general numeric fluents are NOT safely supported.
+       ;; those functions defined by :ACTION-COST, such as TOTAL-COST, will not be copied
+       ;; because they are 0-arg function.
+       (push (pddl-function-state
+              :name name
+              :value value
+              :type type
+              :body body
               :parameters (substitute-if base
                                          base-type-p
                                          parameters))

@@ -43,17 +43,20 @@ its precondition or the effect."
             (collect i into %indices))
           (finally (setf related %related
                          indices %indices)))
-
     (values
      (mapcar (compose
               (let ((owners (mapcar #'first (mutex-predicates domain))))
                 (lambda (states)
                   (remove-if-not
-                       (lambda (atomic-state)
-                         (some
-                          (curry #'predicate-more-specific-p atomic-state)
-                          owners))
-                       states)))
+                   (lambda (atomic-state)
+                     (ematch atomic-state
+                       ((type pddl-atomic-state)
+                        (some
+                         (curry #'predicate-more-specific-p atomic-state)
+                         owners))
+                       ((type pddl-function-state)
+                        t)))
+                   states)))
               (lambda (ta)
                 (match ta
                   ((timed-action
@@ -82,4 +85,4 @@ its precondition or the effect."
 (defun extract-movements (object schedule domain)
   (multiple-value-call
       #'shrink-movements
-      (%extract-movements object schedule domain)))
+    (%extract-movements object schedule domain)))

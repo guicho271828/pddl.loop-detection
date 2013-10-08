@@ -15,7 +15,7 @@
                     (name problem)))
           (pathname-as-directory basedir))))
     (ensure-directories-exist path :verbose t)
-    (format t "~&Writing ~a~&" path)
+    (format *shared-output* "~&Writing ~a~&" path)
     (with-open-file (s path
                        :direction :output
                        :if-exists :supersede

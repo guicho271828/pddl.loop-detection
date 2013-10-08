@@ -49,15 +49,17 @@ at carry-in."
   (declare (optimize (speed 3) (debug 0) (safety 0) (space 0)))
   @type list used-mutices
   @type list this
-  (dolist (bucket used-mutices)
-    @type list bucket
-    (dolist (e1 this)
-      @type pddl-atomic-state e1
-      (dolist (e2 bucket)
-        @type pddl-atomic-state e2
-        (when (eqstate e1 e2)
-          (return-from mutices-no-conflict-p nil)))))
-  t)
+  (let ((this (remove-if (rcurry #'typep 'pddl-function-state)
+                         this)))
+    (dolist (bucket used-mutices)
+      @type list bucket
+      (dolist (e1 this)
+        @type pddl-atomic-state e1
+        (dolist (e2 bucket)
+          @type pddl-atomic-state e2
+          (when (eqstate e1 e2)
+            (return-from mutices-no-conflict-p nil)))))
+    t))
 
 (defun %exploit-rec (movements-shrinked used-mutices base-positions i)
   ;(break+ used-mutices (car movements-shrinked))
