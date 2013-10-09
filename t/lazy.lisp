@@ -143,4 +143,4 @@
 (test integrated-lazy
   (terpri)
   (finishes
-    (exploit-loop-problems-lazy cell-assembly-model2b-2-7 'b-0)))
+    (exploit-loop-problems-lazy cell-assembly-model2b-1-1 'b-0)))

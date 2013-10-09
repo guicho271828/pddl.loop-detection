@@ -28,7 +28,7 @@ This file is a part of pddl.loop-detection project.
 
 (defparameter schedule
   (reschedule
-   cell-assembly-model2b-2-7
+   cell-assembly-model2b-1-1
    :minimum-slack))
 
 ;; 別にアクション列は同じじゃなかった。
@@ -90,7 +90,7 @@ This file is a part of pddl.loop-detection project.
                  steady-states :verbose :modest)))))
 
 (defparameter prob
-  cell-assembly-model2b-2)
+  cell-assembly-model2b-1)
 (defparameter base-type
   (type (object prob 'b-0)))
 
@@ -214,5 +214,5 @@ no instance of owner predicate
 (test integrated
   (terpri)
   (finishes
-    (exploit-loop-problems cell-assembly-model2b-2-7 'b-0)))
+    (exploit-loop-problems cell-assembly-model2b-1-1 'b-0)))
 
