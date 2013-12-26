@@ -23,3 +23,10 @@
       (let ((*package* (find-package :pddl)))
         (print-pddl-object problem s)))
     path))
+
+(export 'write-pddl)
+
+(eval-when (:compile-toplevel :load-toplevel :execute)
+  (setf (fdefinition 'write-pddl)
+        (fdefinition 'write-problem)))
+
