@@ -26,7 +26,7 @@
 
 (export 'write-pddl)
 
-(eval-when (:compile-toplevel :load-toplevel :execute)
+(eval-when (:load-toplevel :execute)
   (setf (fdefinition 'write-pddl)
         (fdefinition 'write-problem)))
 
