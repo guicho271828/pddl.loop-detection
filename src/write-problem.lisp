@@ -25,8 +25,10 @@
     path))
 
 (export 'write-pddl)
+(export 'write-plan)
 
 (eval-when (:load-toplevel :execute)
   (setf (fdefinition 'write-pddl)
+        (fdefinition 'write-problem))
+  (setf (fdefinition 'write-plan)
         (fdefinition 'write-problem)))
-
