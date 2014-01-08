@@ -10,6 +10,7 @@
         :guicho-a*
         :guicho-red-black-tree
         :iterate
+        :eazylazy
         :optima
         :osicat
         :annot.doc

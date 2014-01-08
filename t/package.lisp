@@ -12,6 +12,7 @@ This file is a part of pddl.loop-detection project.
 	:alexandria
 	:optima
 	:repl-utilities
+        :eazylazy
         :pddl
 	:pddl.scheduler
         :pddl.loop-detection

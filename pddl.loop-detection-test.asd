@@ -13,6 +13,7 @@
   :depends-on (:pddl.loop-detection
 	       :pddl.instances
 	       :pddl-test
+               :eazylazy
                :repl-utilities
                :fiveam)
   :components ((:module "t"

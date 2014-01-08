@@ -14,6 +14,7 @@
   :depends-on (:pddl :pddl.scheduler
                      :guicho-utilities.threading
                      :aflab1
+                     :eazylazy
                      :inferior-shell
                      :osicat
                      :bordeaux-threads
@@ -21,9 +22,9 @@
   :components ((:file :package :pathname "src/package")
 	       (:module "src"
 		:depends-on (:package)
+                :serial t
                 :components
-                ((:file :util)
-                 (:file :iterator :depends-on (:util))
+                ((:file :iterator)
                  (:file :mutex)
 		 (:file :movement)
 		 (:file :steady-state)
