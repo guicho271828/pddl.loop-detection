@@ -111,9 +111,13 @@
     (is (equal '(0 2) (funcall it)))
     (is (equal '(0 2 3) (funcall it)))
     (multiple-value-bind (value stack) (funcall it)
+      (print :error-point)
+      (print stack)
       (is (equal '(0 2 3 4) value))
+      (print :error-point2)
       (is-true (ematch stack
                  ((list* 3 4 _) t)))
+      (print :error-point3)
       (is-true (ematch (funcall it :wind-stack stack)
                  ((list* 2 (list* 3 4 _) _) t))))
 
