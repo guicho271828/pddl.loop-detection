@@ -42,6 +42,9 @@ Please wait a moment...~%"))
                             :verbose verbose)))
              base-type)))))))
 
+
+;; base-object: symbol, keyword, string
+;; returns a lazy list of (list problempath 
 @export
 (defun exploit-loop-problems-lazy (unit-plan base-object &key verbose)
   (terpri *standard-output*)

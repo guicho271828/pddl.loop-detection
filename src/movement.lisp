@@ -24,6 +24,7 @@ its precondition or the effect."
 (defmethod related-to (designator (ta timed-action))
   (related-to designator (timed-action-action ta)))
 
+;; type of mutex??
 @export
 (defun acquire-or-release-mutex-p (mutex action)
   (match mutex

@@ -11,8 +11,8 @@
   (declaim (inline %loop-verbosity-lazy))
   (defun %loop-verbosity-lazy (forward-duplication-check-p
                                post-duplication-check-p
-                               steady-state-tree
-                               moves
+                               steady-state-tree ;; lazy tree -- to be refactored
+                               moves ;; movements
                                verbose)
     (let* ((m-num (length moves))
            (it (tree-iterator steady-state-tree :lazy t))
@@ -88,9 +88,7 @@
   @export
   (defun exploit-loopable-steady-state-lazy (movements-shrinked steady-state-tree
                                              &key (verbose t) (duplication-check t))
-    "Returns the list of solution path from start-of-loop to end-of-loop.
-start-of-loop is always the same list to the steady-state in the
-meaning of EQUALP."
+    "Returns the list of solution path from start-of-loop (MS3) to end-of-loop (MS3)."
     (declare (ignorable verbose))
     (declare (optimize (speed 3)))
     (declare (inline %none-lazy))

@@ -2,8 +2,8 @@
 (in-package :pddl.loop-detection)
 (use-syntax :annot)
 
-;; 以下、mutex検知
-
+;; mutex detection
+;; primary function: mutex predicates
 
 @export
 (defun subset-effect-p (effect1 effect2)
@@ -49,6 +49,7 @@ in a owner-mutex relationship."
 
 @export
 (defun mutices-in (action)
+  "returns a list of all possible candidates of owner-mutex pair???"
   (with-accessors ((a add-list) (d delete-list)) action
     (append
       (mapcar (rcurry #'%validate action d d) (%candidates a a :mutex))
@@ -58,8 +59,10 @@ in a owner-mutex relationship."
 
 @export
 (defun %candidates (maybe-owners maybe-mutices kind)
-  "Try to find negations of mutices, that is, those predicates which
-represent resources being released."
+  "TODO: refactoring
+For each owner o in maybe-owners, find m in maybe-mutices that
+satisfies the parameter subsumption condition.
+kind might be :mutex or :release."
   (let (acc)
     (map-product
      (lambda (e1 e2)
@@ -72,6 +75,7 @@ represent resources being released."
 
 @export
 (defun %indices (predicate mutex)
+  "returns the parameter index mapping from `predicate' to `mutex'."
   (iter (for p in (parameters mutex))
         (collect (position p (parameters predicate)))))
 
@@ -95,6 +99,7 @@ represent resources being released."
     maybe-owners)))
 
 (defun %validate (mutex action maybe-owners maybe-mutices)
+  "TODO: refactoring"
   (ematch mutex
     ((or (list owner mutex indices kind)
          (list owner mutex indices kind :validated))
