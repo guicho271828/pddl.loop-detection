@@ -13,7 +13,7 @@
   :license "LLGPL"
   :depends-on (:pddl :pddl.scheduler
                      :guicho-utilities.threading
-                     :aflab1
+                     :guicho-a-star
                      :eazylazy
                      :inferior-shell
                      :osicat
