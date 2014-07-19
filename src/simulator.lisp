@@ -2,11 +2,10 @@
 (use-syntax :annot)
 
 @export
-(defclass state-node (searchable-node)
+(defclass state-node (unit-cost-node)
   ((current-state :initarg :current-state :reader current-state)
    (goal :initarg :goal :accessor goal)
-   (movements :initarg :movements :reader movements)
-   (complementary-edge-class :initform 'transition)))
+   (movements :initarg :movements :reader movements)))
 
 (defvar *state-hash*)
 (defmethod allocate-instance :around
@@ -22,17 +21,11 @@
     (with-slots (current-state) n
       (format s "~a :cost ~a" current-state (cost n)))))
 
-@export
-(defclass transition (searchable-edge)
-  ((complementary-node-class :initform 'state-node)))
-
 (defmethod generic-eq ((n1 state-node) (n2 state-node))
   (declare (optimize (speed 3) (debug 0)))
   (equal (current-state n1)
          (current-state n2)))
 
-(defmethod cost ((tr transition))
-  1)
 (defmethod heuristic-cost-between ((n1 state-node) (n2 state-node))
   ;; +this value is always the same, so it is meaningless.+
   ;; FALSE the above description is false.
@@ -104,7 +97,7 @@
                    (push path solutions)
                    (when (< (length solutions) limit)
                      (continue))))))))
-        (a*-search start goal :verbose verbose))
+        (a*-search-clos start goal :verbose verbose))
       solutions)))
 
 (declaim (ftype (function (list list state-node fixnum) boolean) %make-state-node))
