@@ -6,7 +6,7 @@ This file is a part of pddl.loop-detection project.
 (defpackage pddl.loop-detection-test
   (:use :cl
 	:guicho-utilities
-	:guicho-a*
+	:eazy-a*
 	:guicho-red-black-tree
 	:iterate
 	:alexandria
@@ -20,7 +20,7 @@ This file is a part of pddl.loop-detection project.
         :pddl.instances
         :fiveam)
   (:shadow :place :maximize :minimize)
-  (:shadowing-import-from :guicho-a* :cost)
+  (:shadowing-import-from :eazy-a* :cost)
   (:shadowing-import-from :fiveam :fail))
 (in-package :pddl.loop-detection-test)
 

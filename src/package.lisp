@@ -7,7 +7,7 @@
   (:use :cl
         :guicho-utilities
         :guicho-utilities.threading
-        :guicho-a*
+        :eazy-a*
         :guicho-red-black-tree
         :iterate
         :eazylazy
@@ -23,7 +23,7 @@
         :lparallel)
   (:shadow :force :delay)
   (:shadowing-import-from
-   :guicho-a* :cost)            ;resolve conflict with pddl:cost
+   :eazy-a* :cost)            ;resolve conflict with pddl:cost
   (:shadowing-import-from
    :iterate :minimize :maximize))
 (in-package :pddl.loop-detection)
