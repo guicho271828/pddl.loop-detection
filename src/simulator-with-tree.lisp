@@ -1,6 +1,42 @@
 (in-package :pddl.loop-detection)
 (use-syntax :annot)
 
+(defun make-buckets (n)
+  (make-array n :initial-element nil))
+
+(defun %forward-duplication-check (ss end bucket)
+  (some
+   (lambda (loop-path)
+     (or (find ss loop-path :test #'equalp)
+         (find end loop-path :test #'equalp)))
+   bucket))
+
+(defun %post-duplication-check (buckets)
+  (map 'vector #'%post-duplication-check/bucket buckets))
+(defvar *flag*)
+(defun %post-duplication-check/bucket (bucket)
+  (let ((*flag* nil))
+    (values (remove-duplicates bucket :test #'%loop-equal)
+            *flag*)))
+(defun %loop-equal (path1 path2)
+  (when-let ((it (or (find (first-elt path1) path2 :test #'equalp)
+                     (find (last-elt path1) path2 :test #'equalp)
+                     (find (first-elt path2) path1 :test #'equalp)
+                     (find (last-elt path2) path1 :test #'equalp))))
+    (setf *flag* t)
+    it))
+
+(defun %constraint< (ss1 ss2)
+  (subsetp ss1 ss2 :test #'=))
+
+(defun %fast-failure-check (ss bucket)
+  (some (rcurry #'%constraint< ss) bucket))
+
+(declaim (inline funcall-if-functionp))
+(defun funcall-if-functionp (fn &rest arguments)
+  (when (functionp fn)
+    (apply fn arguments)))
+
 @export
 (define-condition steady-state-condition (error)
   ((steady-state :accessor steady-state :initarg :steady-state)))
@@ -86,15 +122,18 @@
                           nil))
 
   @export
-  (defun exploit-loopable-steady-state-lazy (movements-shrinked steady-state-tree
-                                             &key (verbose t) (duplication-check t))
-    "Returns the list of solution path from start-of-loop (MS3) to end-of-loop (MS3)."
+  (defun exploit-loopable-steady-state-lazy
+      (movements-shrinked steady-state-tree
+       &key (verbose t) (duplication-check t))
+    "Returns the list of solution path from start-of-loop (MS3) to
+end-of-loop (MS3)."
     (declare (ignorable verbose))
     (declare (optimize (speed 3)))
     (declare (inline %none-lazy))
-    (macrolet ((%call (name) `(case duplication-check
-                                ((nil)           (,name movements-shrinked steady-state-tree nil nil))
-                                (:post-only    (,name movements-shrinked steady-state-tree nil t))
-                                (:forward-only (,name movements-shrinked steady-state-tree t nil))
-                                (otherwise     (,name movements-shrinked steady-state-tree t t)))))
+    (macrolet ((%call (name)
+                 `(case duplication-check
+                    ((nil)           (,name movements-shrinked steady-state-tree nil nil))
+                    (:post-only    (,name movements-shrinked steady-state-tree nil t))
+                    (:forward-only (,name movements-shrinked steady-state-tree t nil))
+                    (otherwise     (,name movements-shrinked steady-state-tree t t)))))
       (%call %none-lazy))))

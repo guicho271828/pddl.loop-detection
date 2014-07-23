@@ -1,6 +1,23 @@
 (in-package :pddl.loop-detection)
 (use-syntax :annot)
 
+;;;; utilities
+
+@export
+(defun make-eol (steady-state length)
+  "make the end-of-loop state"
+  `(,@(cdr steady-state) ,length))
+
+(declaim (ftype (function (list list) boolean) mutices-no-conflict-p))
+@export
+(defun conflict-p (resources1 resources2)
+  (dolist (e1 resources1 nil)
+    (dolist (e2 resources2)
+      (when (eqstate e1 e2)
+        (return-from conflict-p t)))))
+
+;;;; main description
+
 #|
  (0 (1 2 3 4)
     (2 3))
@@ -20,62 +37,39 @@ for each leaf node, the first structure requires only one cons, while
 the second requires N conses where N is the length of a steady state.
 |#
 
-@export @doc "returns a cons tree of steady states. Each steady state is
-represented by a leaf or a branch of the tree. Each leaf or a branch node
-is a mutex position index.  0 indicates carry-in, where a base
-is waiting to be carried into the factory and where no mutex
-exists. Any of the resulting steady-states must have one base placed
-at carry-in (= position 0)."
-(defun exploit-steady-state-lazy (movements-shrinked)
-  (declare (optimize (speed 2) (debug 1)))
-  @type list movements-shrinked
-  (%tree-rec movements-shrinked nil 0))
 
-(declaim (ftype (function (list list fixnum) (or fixnum null)) %tree-leaf))
-(defun %tree-leaf (this used-mutices i)
-  (declare (optimize (speed 3) (debug 0) (safety 0) (space 0)))
-  (if (mutices-no-conflict-p this used-mutices)
-      i
-      nil))
+(progn
+  (define-local-function %tree-leaf (this now i)
+    (if (mutices-no-conflict-p this now)
+        i nil))
 
-(declaim (ftype (function (list list fixnum) (or fixnum list)) %tree-rec))
-(defun %tree-rec (movements-shrinked used-mutices i)
-  (declare (optimize (speed 3) (debug 0) (safety 0) (space 0)))
-  (match movements-shrinked
-    ((list this)
-     (%tree-leaf this used-mutices i))
-    ((list* this rest)
-     @type cons rest
-     (if (mutices-no-conflict-p this used-mutices)
-         (let ((next-mutices (cons this used-mutices))
+  (define-local-function %tree-rec (ms now i)
+    ;; now is a list of resources in use in the current branch of the
+    ;; tree. For example, if it is in the (0 (1)) position in the example
+    ;; above, it is using the locks acquired in both 0th and the 1st
+    ;; position. It only adds the elements.
+    (match ms
+      ((list (movement _ this)) ; only one step remains
+       (%tree-leaf this now i))
+      ((list* (movement _ this) rest)
+       (unless (conflict-p this now)
+         (let ((next (append this now)) ; next resources
                (len (length rest)))
-           (lcons i
-                  (remove-duplicates
-                   (iter (for rest2 on rest)
-                         (for next-i
-                              from (the fixnum (+ 1 i))
-                              to (the fixnum (+ 1 i len)))
-                         @type fixnum next-i
-                         (when-let ((children
-                                     (%tree-rec
-                                      rest2
-                                      next-mutices
-                                      next-i)))
-                           (collecting children)))
-                   :test #'tree-duplication-test)))
-         (%tree-rec rest
-                    used-mutices
-                    (1+ i))))))
+           (cons i
+                 (iter (for rest2 on rest)
+                       (for next-i from (+ 1 i) to (+ 1 i len))
+                       (for child = (%tree-rec rest2 next next-i))
+                       ;; if conflict has happened, skip it
+                       (when child
+                         (collecting child)))))))))
 
-(declaim (ftype (function ((or cons fixnum) (or cons fixnum)) boolean) tree-duplication-test))
+  @export @doc "Takes a list of movements.
+Returns a cons tree of steady states. Each steady state is
+represented by a leaf or a branch of the tree. Each leaf or a branch node
+is a mutex position index."
+  (defun steady-state-tree (movements)
+    (more-labels () (%tree-rec %tree-leaf)
+      (match movements
+        ((list* (movement _ resources) rest)
+         (%tree-rec rest resources 0))))))
 
-@export
-(defun tree-duplication-test (a b)
-  (declare (optimize (speed 3) (debug 0) (safety 0) (space 0)))
-  (if (typep a 'fixnum)
-      (when (typep b 'fixnum)
-        (locally (declare (type fixnum a b))
-          (= a b)))
-      (when (typep b 'cons)
-        (locally (declare (type cons a b))
-          (= (the fixnum (car a)) (the fixnum (car b)))))))
