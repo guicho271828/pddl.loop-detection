@@ -37,5 +37,10 @@ The given schedule should be sorted beforehand."
         (for prev previous resources)
         (for i from 0)
         (unless (set-equal resources prev)
-          (collect (cons i resources)))))
+          (collect (movement i resources)))))
 
+@export
+(defun movement (index resources)
+  (cons index resources))
+(defpattern movement (index resources)
+  `(cons ,index ,resources))
