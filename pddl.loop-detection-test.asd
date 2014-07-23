@@ -12,14 +12,14 @@
   :license ""
   :depends-on (:pddl.loop-detection
 	       :pddl.instances
-	       :pddl-test
                :eazylazy
                :repl-utilities
                :fiveam)
   :components ((:module "t"
                 :components
                 ((:file :package)
-                 (:file :lazy))))
+                 (:file :lazy)
+                 (:file :test1))))
   :perform (load-op :after (op c) 
 		    (eval (read-from-string "(fiveam:run! :pddl.loop-detection)"))
 		    (asdf:clear-system c)))
