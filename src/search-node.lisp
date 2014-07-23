@@ -24,7 +24,6 @@
       (format s "~a :cost ~a" current-state (cost n)))))
 
 (defmethod generic-eq ((n1 state-node) (n2 state-node))
-  (declare (optimize (speed 3) (debug 0)))
   (equal (current-state n1)
          (current-state n2)))
 
@@ -54,27 +53,30 @@
 (defmethod constraint-ordering-op ((n state-node))
   0) ;; it was found to have no effect if any.
 
+;;;; wrapper function
+
 (defun get-loop-from-last (last)
   (iter (for node first last then (parent node))
         (while node)
         (collect (current-state node) at beginning)))
 
 @export
-(defun search-loop-path (movements-shrinked steady-state
-                         &key (verbose t) (limit MOST-POSITIVE-FIXNUM))
+(defun search-loop-path (movements steady-state &key (verbose t))
+  "returns two values: list of paths found, and the cost
+ (which is always the same as long as the path exist)"
   (let* ((*state-hash* (make-hash-table :test #'equal))
          (goal (make-instance
                 'state-node
-                :movements movements-shrinked
+                :movements movements
                 :current-state (make-eol steady-state
-                                         (length movements-shrinked))))
+                                         (length movements))))
          (start (make-instance
                  'state-node
-                 :movements movements-shrinked
+                 :movements movements
                  :goal goal
                  :current-state steady-state)))
     (setf (goal goal) goal)
-    (let (solutions (cost 0))
+    (let (solutions (cost MOST-POSITIVE-FIXNUM))
       (handler-bind
           ((path-not-found
             (lambda (c)
@@ -90,31 +92,22 @@
                   (format
                    t "~%Cost : ~w~%Solution : ~w"
                    (cost last) path))
-                (cond
-                  ((null solutions)
-                   (push path solutions)
-                   (setf cost (cost last))
-                   (continue))
-                  ((= cost (cost last))
-                   (push path solutions)
-                   (when (< (length solutions) limit)
-                     (continue))))))))
+                (unless solutions
+                  (setf cost (cost last)))
+                (push path solutions)
+                (continue)))))
         (a*-search-clos start goal :verbose verbose))
-      solutions)))
+      (values solutions cost))))
 
-(declaim (ftype (function (list list state-node fixnum) boolean) %make-state-node))
-(defun %make-state-node (movements-shrinked current-state goal n)
-  (declare (optimize (speed 3) (safety 0) (debug 0)))
+(defun %make-state-node (movements current-state goal n)
   (make-instance
    'state-node
    :goal goal
-   :movements movements-shrinked
+   :movements movements
    :current-state (substitute (the fixnum (1+ n)) n current-state)))
-
 
 (declaim (ftype (function (fixnum fixnum list list) boolean) movable)) 
 (defun movable (n goal-n used movements)
-  (declare (optimize (speed 3) (safety 0) (debug 0)))
   (let ((n2 (1+ n))
         (carry-out-index (length movements)))
     @type fixnum carry-out-index
