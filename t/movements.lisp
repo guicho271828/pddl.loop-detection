@@ -1,7 +1,7 @@
 (in-package :pddl.loop-detection-test)
 (in-suite :pddl.loop-detection)
 
-(test extract-movements
+(test (extract-movements :depends-on basis)
   (match (extract-movements
           :p2 (sort-schedule *schedule*) makep)
     ((list (list 3 (pddl-atomic-state
