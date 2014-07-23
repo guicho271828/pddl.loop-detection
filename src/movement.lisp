@@ -60,8 +60,7 @@ its precondition or the effect."
                    states)))
               (lambda (ta)
                 (match ta
-                  ((timed-action
-                    :end (timed-state :state states))
+                  ((timed-action _ _ _ (timed-state _ states _))
                    (remove-if-not (curry #'related-to object)
                                   states)))))
              related)
