@@ -19,3 +19,9 @@
      (pass "the schedule works as expected"))))
 
 
+(test (steady-states-tree :depends-on movement)
+  (is (equalp
+       '(0 (1 (3 (4 5) 5) (4 5) 5) (3 (4 5) 5) (4 5) 5)
+       (steady-state-tree (extract-movements :p2 *schedule* makep)))))
+
+

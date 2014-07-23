@@ -36,7 +36,8 @@ The given schedule should be sorted beforehand."
              (extract-resources object schedule *domain*))
         (for prev previous resources)
         (for i from 0)
-        (unless (set-equal resources prev)
+        (when (or (zerop i)
+                  (not (set-equal resources prev)))
           (collect (movement i resources)))))
 
 @export
