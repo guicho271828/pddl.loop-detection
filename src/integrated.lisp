@@ -17,9 +17,10 @@ Please wait a moment...~%"))
            (*domain* (domain unit-plan))
            (tmpdir (mktemp :pddl))
            (base-type (type (object *problem* base-object))))
-      (let ((schedule (reschedule unit-plan
-                                  :minimum-slack
-                                  :verbose nil)))
+      (let ((schedule (sort-timed-actions
+                       (reschedule unit-plan
+                                   :minimum-slack
+                                   :verbose nil))))
         (multiple-value-bind (movements movements-indices)
             (extract-movements base-object schedule *domain*)
           (message)
