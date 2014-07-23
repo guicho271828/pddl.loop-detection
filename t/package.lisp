@@ -19,8 +19,8 @@ This file is a part of pddl.loop-detection project.
 	:pddl.plan-optimizer
         :pddl.instances
         :fiveam)
-  (:shadow :place :maximize :minimize)
-  (:shadowing-import-from :eazy-a* :cost)
+  (:shadow :place)
+  (:shadowing-import-from :pddl :maximize :minimize :cost)
   (:shadowing-import-from :fiveam :fail))
 (in-package :pddl.loop-detection-test)
 

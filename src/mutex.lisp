@@ -2,136 +2,224 @@
 (in-package :pddl.loop-detection)
 (use-syntax :annot)
 
-;; mutex detection
-;; primary function: mutex predicates
+;;;; mutex detection
+;;;; primary function: mutex predicates
 
 @export
-(defun subset-effect-p (effect1 effect2)
-  "The basic function which checks if the given two effects are
-in a owner-mutex relationship."
-  (subsetp (parameters effect1)
-           (parameters effect2)))
-
-
-@export
-(defun mutex-predicates (domain)
+(defun mutex-predicates (*domain*)
   "returns all possible pairs of predicates in owner-mutex relationships."
-  (shrink-mutices
-   (categorize-mutices
-    (validate-all-mutex-candidates domain))))
+  (shrink-owner-locks
+   (categorize-owner-locks
+    (valid-owner-locks-in *domain*))))
+
+
+;;;; small functions
 
 @export
-(defun validate-all-mutex-candidates (domain)
-  (mappend
-   (lambda (a)
-     (mapcar
-      (curry #'%validate-mutex-among-actions
-             (actions domain))
-      (mutices-in a)))
-   (actions domain)))
+(defun subset-effect-p (sub super)
+  "The basic function which checks if the arguments of effect1 is a subset of
+effect2. Subset-ness is checked by eql (effect of the same name is instantiated
+only once, this is ensured by the parser.)"
+  (subsetp (parameters sub) (parameters super)))
 
 @export
-(defun %validate-mutex-among-actions (actions mutex)
-  (ematch mutex
-    ((list* _ _ _ :mutex _)
-     (dolist (a2 actions)
-       (setf mutex (%validate mutex a2 (delete-list a2) (delete-list a2)))
-       (setf mutex (%validate mutex a2 (add-list a2) (add-list a2)))
-       (setf mutex (%validate mutex a2 (add-list a2) (negative-preconditions a2)))
-       ))
-    ((list* _ _ _ :release _)
-     (dolist (a2 actions)
-       (setf mutex (%validate mutex a2 (add-list a2) (delete-list a2)))
-       (setf mutex (%validate mutex a2 (delete-list a2) (add-list a2)))
-       (setf mutex (%validate mutex a2 (add-list a2) (positive-preconditions a2))))))
-  mutex)
-
+(defun index-mapping (sub super)
+  "returns the parameter index mapping from `sub' to `super'."
+  (iter (for p in (parameters sub))
+        (collect (position p (parameters super)))))
 
 @export
-(defun mutices-in (action)
-  "returns a list of all possible candidates of owner-mutex pair???"
-  (with-accessors ((a add-list) (d delete-list)) action
-    (append
-      (mapcar (rcurry #'%validate action d d) (%candidates a a :mutex))
-      (mapcar (rcurry #'%validate action a a) (%candidates d d :mutex))
-      (mapcar (rcurry #'%validate action d a) (%candidates a d :release))
-      (mapcar (rcurry #'%validate action a d) (%candidates d a :release)))))
+(defun specializes (e1 e2 &optional mapping)
+  "Returns t when the parameters of e1 specializes e2
+ (types of e1 is more strict than that of e2).
+The optional third argument `mapping', when give,
+is a list of indices which specifies the mapping from e2 to e1."
+  (every #'pddl-supertype-p
+         (mapcar #'type (if mapping
+                            (mapcar (curry #'elt (parameters e1))
+                                    mapping)
+                            (parameters e1)))
+         (mapcar #'type (parameters e2))))
 
+
+;;;; owner-lock structure object
 @export
-(defun %candidates (maybe-owners maybe-mutices kind)
-  "TODO: refactoring
-For each owner o in maybe-owners, find m in maybe-mutices that
-satisfies the parameter subsumption condition.
-kind might be :mutex or :release."
+(defstruct (owner-lock (:constructor owner-lock (owner lock mapping)))
+  owner lock mapping)
+
+(export '(owner-lock-p owner-lock-owner owner-lock-lock owner-lock-mapping))
+
+(defpattern owner-lock (&optional (owner '_) (lock '_) (mapping '_))
+  `(structure owner-lock- (owner ,owner) (lock ,lock) (mapping ,mapping)))
+
+(defun owner->lock (owner-lock owner)
+  (ematch owner
+    ((pddl-predicate parameters)
+     (ematch owner-lock
+       ((owner-lock _ (pddl-predicate name) m)
+        (pddl-atomic-state
+         :name name
+         :parameters (mapcar (lambda (n) (nth n parameters)) m)))))))
+
+(defun acquire-or-release-p (owner-lock action)
+  (match owner-lock
+    ((owner-lock owner)
+     (or (some (rcurry #'specializes owner)
+               (add-list action))
+         (some (rcurry #'specializes owner)
+               (delete-list action))))))
+
+;;;; middle functions
+;;;; subsuming-effects-in action
+@export
+(defun subsuming-effects-in (action)
+  "For an action, returns a list of all pairs of effects that one maps to
+and specializes the other. Returns four values: release-locks(occupying),
+release-locks (releasing), owner-locks(occupying), owner-locks (releasing).
+owner-locks are meaningful only when :negative-precondition is activated."
+  (with-accessors ((a add-list)
+                   (d delete-list)) action
+    (values
+     (find-subsuming-pairs a d)
+     (find-subsuming-pairs d a)
+     (find-subsuming-pairs a a)
+     (find-subsuming-pairs d d))))
+
+
+(defun maps-and-specializes-p (owner lock)
+  "the mapping exists and owner specializes locks"
+  (when (and (not (eqstate owner lock))
+             (subset-effect-p lock owner))
+    (let ((mapping (index-mapping lock owner)))
+      (when (specializes owner lock mapping)
+        mapping))))
+
+(defun find-subsuming-pairs (maybe-owners maybe-locks)
+  "For each owner o in maybe-owners, find m in maybe-locks that
+satisfies the parameter subsumption condition."
   (let (acc)
-    (map-product
-     (lambda (e1 e2)
-       (when (and (not (eqstate e1 e2))
-                  (subset-effect-p e1 e2))
-         (push (list e2 e1 (%indices e2 e1) kind)
-               acc)))
-     maybe-owners maybe-mutices)
-    acc))
+    (dolist (owner maybe-owners acc)
+      (dolist (lock maybe-locks)
+        (when-let ((mapping (maps-and-specializes-p owner lock)))
+          (push (owner-lock owner lock mapping) acc))))))
+
+;;;; validate
+
+(defmacro implies (a b)
+  `(if ,a ,b t))
 
 @export
-(defun %indices (predicate mutex)
-  "returns the parameter index mapping from `predicate' to `mutex'."
-  (iter (for p in (parameters mutex))
-        (collect (position p (parameters predicate)))))
-
-(defun %matches-to-mutex-p (mutex indices true-owner pred)
-  (and (predicate-more-specific-p pred mutex)
-       (every
-        (lambda (param index)
-          (eq param (nth index (parameters true-owner))))
-        (parameters pred)
-        indices)))
-
-(defun %owner-implies-mutex-p (owner mutex indices maybe-owners maybe-mutices)
-  (every
-   (lambda (true-owner)
-     (some
-      (curry #'%matches-to-mutex-p
-             mutex indices true-owner)
-      maybe-mutices))
-   (remove-if-not
-    (curry #'predicate-more-specific-p owner)
-    maybe-owners)))
-
-(defun %validate (mutex action maybe-owners maybe-mutices)
-  "TODO: refactoring"
-  (ematch mutex
-    ((or (list owner mutex indices kind)
-         (list owner mutex indices kind :validated))
-     (if (%owner-implies-mutex-p  owner mutex indices maybe-owners maybe-mutices)
-	 (list owner mutex indices kind :validated)
-	 (list owner mutex indices kind :infeasible action)))
-    ((list _ _ _ _ :infeasible _)
-     mutex)))
+(defun releaser-lock-valid-p (owner-lock action)
+  (ematch owner-lock
+    ((owner-lock owner)
+     (or (every
+          (lambda (o)
+            (implies
+             (specializes o owner)
+             (let ((l (owner->lock owner-lock o)))
+               (and
+                (find l (positive-preconditions action) :test #'eqstate)
+                (find l (delete-list action) :test #'eqstate)))))
+          (add-list action))
+         (every
+           (lambda (o)
+             (implies
+              (specializes o owner)
+              (let ((l (owner->lock owner-lock o)))
+                (find l (add-list action) :test #'eqstate))))
+           (delete-list action))))))
 
 @export
-(defun categorize-mutices (candidates)
-  (let ((hash (make-hash-table :test #'equalp)))
-    (dolist (candidate candidates hash)
-      (match candidate
-        ((list* owner mutex indices kind _)
-         (push candidate
-               (gethash (list (name owner)
-                              (mapcar #'type (parameters owner))
-                              (name mutex)
-                              indices kind) hash)))))))
+(defun owner-lock-valid-p (owner-lock action)
+  (ematch owner-lock
+    ((owner-lock owner)
+     (or (every
+          (lambda (o)
+            (implies
+             (specializes o owner)
+             (let ((l (owner->lock owner-lock o)))
+               (and
+                (find l (negative-preconditions action) :test #'eqstate)
+                (find l (add-list action) :test #'eqstate)))))
+          (add-list action))
+         (every
+           (lambda (o)
+             (implies
+              (specializes o owner)
+              (let ((l (owner->lock owner-lock o)))
+                (find l (delete-list action) :test #'eqstate))))
+           (delete-list action))))))
+
+
+
+
+;;;; collect everything among domain
 
 @export
-(defun shrink-mutices (candidates-hash)
+(defun valid-owner-locks-in (domain)
+  (let ((actions (actions domain)))
+    (flet ((rvalid (owl)
+             (every (curry #'releaser-lock-valid-p owl) actions))
+           (ovalid (owl)
+             (every (curry #'owner-lock-valid-p owl) actions)))
+    (iter (for a in actions)
+          (multiple-value-bind (ra rr oa or) (subsuming-effects-in a)
+            (nconcing (remove-if-not #'rvalid ra) into releasers)
+            (nconcing (remove-if-not #'rvalid rr) into releasers)
+            (nconcing (remove-if-not #'ovalid oa) into owners)
+            (nconcing (remove-if-not #'ovalid or) into owners))
+          (finally (return (values releasers owners)))))))
+
+
+(defun categorize-owner-locks (owner-locks)
+  (categorize owner-locks
+              :test #'equal
+              :key (lambda (owner-lock)
+                     (ematch owner-lock
+                       ((owner-lock (pddl-predicate :name oname)
+                                    (pddl-predicate :name lname) m)
+                        (list oname lname m))))))
+
+(defun choose-if (fn args1 args2 &key (key #'identity))
+  (mapcar
+   (lambda (a1 a2)
+     (if (funcall fn
+                  (funcall key a1)
+                  (funcall key a2))
+         a1 a2))
+   args1 args2))
+
+
+(defun merge-owners (owl1 owl2)
+  (ematch owl1
+    ((owner-lock
+      (pddl-predicate :name oname :parameters oparam1)
+      (pddl-predicate :name lname :parameters lparam1)
+      m)
+     (ematch owl2
+       ((owner-lock
+         (pddl-predicate :parameters oparam2)
+         (pddl-predicate :parameters lparam2))
+        (owner-lock
+         (pddl-predicate
+          :name oname
+          :parameters (choose-if
+                       #'pddl-supertype-p
+                       oparam1 oparam2
+                       :key #'type))
+         (pddl-predicate
+          :name lname
+          :parameters (choose-if #'pddl-supertype-p
+                                 lparam1 lparam2
+                                 :key #'type))
+          m))))))
+
+(defun shrink-owner-locks (hash)
   (let (acc)
     (maphash
-     (lambda (key mutices)
+     (lambda (key owner-locks)
        @ignore key
-       (when (every (lambda (mutex)
-                      (match mutex
-                        ((list _ _ _ _ :validated)
-                         t))) mutices)
-	 (push (car mutices) acc)))
-     candidates-hash)
+       (push (reduce #'merge-owners owner-locks) acc))
+     hash)
     acc))
 

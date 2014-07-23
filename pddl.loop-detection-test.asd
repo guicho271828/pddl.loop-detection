@@ -19,6 +19,12 @@
                 :components
                 ((:file :package)
                  (:file :lazy)
+                 (:file :utility)
+                 ;; domain functions
+                 (:file :mutex)
+                 ;; problem functions
+                 (:file :basis)
+                 (:file :movements)
                  (:file :test1))))
   :perform (load-op :after (op c) 
 		    (eval (read-from-string "(fiveam:run! :pddl.loop-detection)"))

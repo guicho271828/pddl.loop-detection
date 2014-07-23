@@ -2,38 +2,6 @@
 (in-package :pddl.loop-detection-test)
 (in-suite :pddl.loop-detection)
 
-(defparameter schedule
-  (reschedule
-   cell-assembly-model2b-1-1
-   :minimum-slack))
-
-;; 別にアクション列は同じじゃなかった。
-;; (test same-actions-per-base
-;;   (is (every (lambda (ta0 ta1)
-;; 	       (eq (name (timed-action-action ta0))
-;; 		   (name (timed-action-action ta1))))
-;; 	     (filter-schedule schedule :objects '(b-0))
-;; 	     (filter-schedule schedule :objects '(b-1)))))
-
-(defvar movements)
-(defvar movements-indices)
-(defvar movements-shrinked)
-(defvar movements-indices-shrinked)
-
-(test extract-movements
-  (finishes
-    (multiple-value-setq
-	(movements movements-indices)
-      (%extract-movements 'b-0 schedule cell-assembly)))
-  (dolist (m (butlast (cdr movements)))
-    (is-true m))
-  (finishes
-    (multiple-value-setq
-	(movements-shrinked movements-indices-shrinked)
-      (shrink-movements movements movements-indices)))
-  (dolist (m (butlast (cdr movements-shrinked)))
-    (is-true m)))
-
 (defvar steady-states)
 
 (test (steady-states :depends-on extract-movements)
