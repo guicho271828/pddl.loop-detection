@@ -24,7 +24,7 @@
 
 (test (steady-state :depends-on movements)
   (is (equalp
-       '(0 (1 (2 3) 3) (2 3) 3)
+       '(0 (1 (2 (3)) (3)) (2 (3)) (3))
        (steady-state *movements* nil))))
 
 

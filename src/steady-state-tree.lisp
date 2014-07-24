@@ -35,7 +35,7 @@ the second requires N conses where N is the length of a steady state.
 
 (progn
   (define-local-function %ss-leaf (this now i)
-    (if (conflict-p this now) nil i))
+    (if (conflict-p this now) nil (list i)))
   (define-local-function %ss-rec (ms now i)
     ;; now is a list of resources in use in the current branch of the
     ;; tree. For example, if it is in the (0 (1)) position in the example
