@@ -25,8 +25,7 @@
                   mfp-with-filtering))
 
   @export
-  (defun mfp-with-filtering
-      (movements &key (verbose t))
+  (defun mfp-with-filtering (movements &key verbose)
     (let* ((m-num (length movements))
            (buckets (make-array m-num :initial-element nil)))
       (named-lambda rec (ss) ; evaluation method

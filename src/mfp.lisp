@@ -61,7 +61,7 @@
         (collect (current-state node) at beginning)))
 
 @export
-(defun mutex-focused-planning (movements steady-state &key (verbose t))
+(defun mutex-focused-planning (movements steady-state &key verbose)
   "returns two values: list of paths found, and the cost
  (which is always the same as long as the path exist)"
   (let* ((*state-hash* (make-hash-table :test #'equal))
