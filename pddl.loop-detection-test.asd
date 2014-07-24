@@ -18,7 +18,6 @@
   :components ((:module "t"
                 :components
                 ((:file :package)
-                 (:file :lazy)
                  (:file :utility)
                  ;; domain functions
                  (:file :mutex)

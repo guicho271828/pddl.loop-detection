@@ -8,6 +8,7 @@
         :guicho-utilities
         :eazy-a*
         :guicho-red-black-tree
+        :eazylazy
         :iterate
         :optima
         :osicat

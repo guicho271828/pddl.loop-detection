@@ -1,6 +1,8 @@
 (in-package :pddl.loop-detection)
 (use-syntax :annot)
 
+;; this is almost not used now
+
 @export
 (defun movement-transition-cost (schedule index1 index2)
   (- (timed-state-time (timed-action-start (nth index2 schedule)))

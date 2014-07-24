@@ -16,22 +16,17 @@
                      :eazy-a-star
                      :eazylazy
                      :inferior-shell
-                     :osicat
-                     :bordeaux-threads
-                     :lparallel)
+                     :osicat)
   :components ((:file :package :pathname "src/package")
 	       (:module "src"
 		:depends-on (:package)
                 :serial t
                 :components
-                ((:file :iterator)
-                 (:file :mutex)
+                ((:file :mutex)
 		 (:file :movement)
-		 (:file :steady-state)
+                 (:file :search-node)
                  (:file :steady-state-tree)
-		 (:file :simulator)
-		 (:file :simulator-with-tree)
-		 (:file :ranker)
+		 (:file :mutex-focused-planning)
 		 (:file :problem-builder)
                  (:file :write-problem)
                  (:file :integrated))))
