@@ -28,8 +28,28 @@
        (steady-state *movements* nil))))
 
 
-(test (mfp)
+(test (mfp :depends-on movements)
   (is (equalp '(((0) (1) (2) (3) (4) (5)))
               (mutex-focused-planning *movements* '(0)))))
 
-
+(test (filtering :depends-on mfp)
+  (let ((searcher (mfp-with-filtering *movements* :verbose t))
+        (tree (steady-state *movements*))
+        (current (make-array (length *movements*)
+                             :element-type 'fixnum
+                             :adjustable t
+                             :fill-pointer 0)))
+    (setf tree (fmapcar #'identity tree))
+    (is (= 0 (car tree)))
+    (vector-push (car tree) current)
+    (is (equalp '(((0) (1) (2) (3) (4) (5)))
+                (funcall searcher (coerce current 'list))))
+    (iter (for lbranch in (cdr tree))
+          (for branch = (fmapcar #'identity lbranch))
+          (is (numberp (car branch)))
+          (is (listp (cdr branch)))
+          (vector-push (car branch) current)
+          (finishes
+            (print
+             (funcall searcher (coerce current 'list))))
+          (vector-pop current))))

@@ -20,10 +20,8 @@
     (return-from rec :fail))
 
   (declaim (inline mfp-with-filtering))
-  (declaim (ftype (function (list cons &key (:verbose boolean))
-                            (values
-                             (function ((function (list) list)) list)
-                             (function (list) (or list keyword))))
+  (declaim (ftype (function (list &key (:verbose boolean))
+                            (function (list) (or keyword list)))
                   mfp-with-filtering))
 
   @export
@@ -31,7 +29,7 @@
       (movements &key (verbose t))
     (let* ((m-num (length movements))
            (buckets (make-array m-num :initial-element nil)))
-      (named-lambda rec (ss steady-state-tree) ; evaluation method
+      (named-lambda rec (ss) ; evaluation method
          (let ((len (1- (length ss))))
            (more-labels () (%print-open %check-duplicates %fail)
              (%print-open)
