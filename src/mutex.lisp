@@ -7,10 +7,15 @@
 
 @export
 (defun mutex-predicates (*domain*)
-  "returns all possible pairs of predicates in owner-mutex relationships."
-  (shrink-owner-locks
-   (categorize-owner-locks
-    (valid-owner-locks-in *domain*))))
+  "Returns two values.
+The first value is a list of owner-release-mapping.
+The second value is a list of owner-lock-mapping."
+  (multiple-value-bind (owrs owls) (valid-owner-locks-in *domain*)
+    (values
+     (shrink-owner-locks
+      (categorize-owner-locks owrs))
+     (shrink-owner-locks
+      (categorize-owner-locks owls)))))
 
 
 ;;;; small functions
@@ -69,14 +74,14 @@ is a list of indices which specifies the mapping from e2 to e1."
          (some (rcurry #'specializes owner)
                (delete-list action))))))
 
-;;;; middle functions
 ;;;; subsuming-effects-in action
 @export
 (defun subsuming-effects-in (action)
   "For an action, returns a list of all pairs of effects that one maps to
-and specializes the other. Returns four values: release-locks(occupying),
-release-locks (releasing), owner-locks(occupying), owner-locks (releasing).
-owner-locks are meaningful only when :negative-precondition is activated."
+and specializes the other. Returns four values: owner-releasers(occupying),
+owner-releasers (releasing), owner-locks(occupying),
+owner-locks (releasing).  owner-locks are meaningful only
+when :negative-precondition is activated."
   (with-accessors ((a add-list)
                    (d delete-list)) action
     (values
@@ -109,7 +114,7 @@ satisfies the parameter subsumption condition."
   `(if ,a ,b t))
 
 @export
-(defun releaser-lock-valid-p (owner-lock action)
+(defun owner-releaser-valid-p (owner-lock action)
   (ematch owner-lock
     ((owner-lock owner)
      (or (every
@@ -155,20 +160,19 @@ satisfies the parameter subsumption condition."
 
 ;;;; collect everything among domain
 
-@export
 (defun valid-owner-locks-in (domain)
   (let ((actions (actions domain)))
     (flet ((rvalid (owl)
-             (every (curry #'releaser-lock-valid-p owl) actions))
+             (every (curry #'owner-releaser-valid-p owl) actions))
            (ovalid (owl)
              (every (curry #'owner-lock-valid-p owl) actions)))
     (iter (for a in actions)
           (multiple-value-bind (ra rr oa or) (subsuming-effects-in a)
-            (nconcing (remove-if-not #'rvalid ra) into releasers)
-            (nconcing (remove-if-not #'rvalid rr) into releasers)
-            (nconcing (remove-if-not #'ovalid oa) into owners)
-            (nconcing (remove-if-not #'ovalid or) into owners))
-          (finally (return (values releasers owners)))))))
+            (nconcing (remove-if-not #'rvalid ra) into owrs)
+            (nconcing (remove-if-not #'rvalid rr) into owrs)
+            (nconcing (remove-if-not #'ovalid oa) into owls)
+            (nconcing (remove-if-not #'ovalid or) into owls))
+          (finally (return (values owrs owls)))))))
 
 
 (defun categorize-owner-locks (owner-locks)
@@ -179,6 +183,8 @@ satisfies the parameter subsumption condition."
                        ((owner-lock (pddl-predicate :name oname)
                                     (pddl-predicate :name lname) m)
                         (list oname lname m))))))
+
+;;;; shrink the duplicated owners & locks
 
 (defun choose-if (fn args1 args2 &key (key #'identity))
   (mapcar
@@ -203,10 +209,9 @@ satisfies the parameter subsumption condition."
         (owner-lock
          (pddl-predicate
           :name oname
-          :parameters (choose-if
-                       #'pddl-supertype-p
-                       oparam1 oparam2
-                       :key #'type))
+          :parameters (choose-if #'pddl-supertype-p
+                                 oparam1 oparam2
+                                 :key #'type))
          (pddl-predicate
           :name lname
           :parameters (choose-if #'pddl-supertype-p
