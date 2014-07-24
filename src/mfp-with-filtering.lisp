@@ -38,3 +38,29 @@
                (return-from rec results))
              (%fail)))))))
 
+(defstruct (bfs-state (:constructor bfs-state (current ltree))
+                      (:predicate bfs-state-p))
+  current
+  ltree)
+
+(defun best-first-mfp (movements &key verbose)
+  (let ((searcher (mfp-with-filtering movements :verbose verbose)))
+    (labels ((eval-branch (current tree open)
+               (cons (funcall searcher current)
+                     (lambda (real-cost)
+                       (open-minimum
+                        (insert-queue real-cost tree open)))))
+             (open-minimum (open)
+               (multiple-value-bind (open content)
+                   (rb-remove-minimum-node open)
+                 (match content
+                   ((bfs-state current ltree)
+                    (let ((tree (fmapcar #'identity ltree)))
+                      (eval-branch (cons (car tree) current)
+                                   tree
+                                   open)))))))
+      (open-minimum
+       (insert-queue
+        MOST-NEGATIVE-FIXNUM
+        (bfs-state nil (steady-state movements))
+        (make-queue))))))
