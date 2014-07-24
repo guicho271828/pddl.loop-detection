@@ -83,7 +83,7 @@
 
           (dolist (owl da)
             (dolist (a (actions make))
-              (is (releaser-lock-valid-p owl a)))))))))
+              (is (owner-releaser-valid-p owl a)))))))))
 
 (test mutex-predicates
   (let ((owls (mutex-predicates make)))
