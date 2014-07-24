@@ -23,9 +23,9 @@
                 :components
                 ((:file :mutex)
 		 (:file :movement)
-                 (:file :search-node)
-                 (:file :steady-state-tree)
-		 (:file :mutex-focused-planning)
+                 (:file :steady-state)
+                 (:file :mfp)
+		 (:file :mfp-with-filtering)
 		 (:file :problem-builder)
                  (:file :write-problem)
                  (:file :integrated))))
