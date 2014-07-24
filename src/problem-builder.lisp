@@ -1,172 +1,163 @@
 (in-package :pddl.loop-detection)
 (use-syntax :annot)
 
-@export
-(defun gen-base (n)
- (gensym (format nil "BASE~a-" n)))
+;;;; utility
+
+(defun obj (obj n)
+  (intern (format nil "~a~a" (name obj) n)))
 
 (defun states-only (states)
+  ;; remove function-states and takes only atomic-states
   (remove-if-not (rcurry #'typep 'pddl-atomic-state) states))
 
-@export
-(defun build-steady-state-problem (unit-problem
-                                   loop-plan
-                                   schedule
-                                   movements-shrinked
-                                   movements-indices-shrinked
-                                   type)
-  (assert (typep type 'pddl-type))
-  (ematch unit-problem
-    ((pddl-problem :name unit-name
-                   :domain *domain*
-                   :objects objs
-                   :init init
-                   :metric metric)
-     (let* ((base-type-p (rcurry #'pddl-typep type))
-            (objects (categorize objs :key base-type-p))
-            (objects/bases (gethash nil objects))
-            (bases         (gethash t   objects))
-            (init (categorize 
-                   init :key 
-                   (lambda (state)
-                     (if (some (rcurry #'related-to state) bases) t nil))))
-            (init/bases (gethash nil init))
-            (mutices (mutex-predicates *domain*))
-            (ss (car loop-plan)))  ; steady-state start
-       (let* ((*problem*
-               (pddl-problem
-                :name (apply #'concatenate-symbols
-                             unit-name 'ss ss)
-                :objects objects/bases ; warning!! their PROBLEM slot still refers
-                :init init/bases       ; warning!! to the old problem!
-                :goal (list 'and)
-                :metric metric))
-              loop-bases)
+(defun instance-p (predicate atomic-state)
+  (and (eqname atomic-state predicate)
+       (specializes atomic-state predicate)))
 
-         ;; Add new objects, their corresponding initial states and
-         ;; the goal conditions.
-         (iter
-           ;; example: ss = (0 1 2 9)
-           (for position in ss)
-           (for base = (pddl-object :name (gen-base position) :type type))
-           (push base loop-bases)
-           (for prototype-atomic-states = 
-                (remove-if-not
-                 (lambda (atomic-state)
-                   (some (rcurry #'related-to atomic-state) bases))
-                 (timed-state-state
-                  (timed-action-end
-                   (nth (nth position movements-indices-shrinked)
-                        schedule)))))
-           (%step0 base)
-           (%step1 prototype-atomic-states base base-type-p)
-           (%step2 base base-type-p movements-shrinked mutices position)
-           
-           (for pbase previous base)
-           (unless pbase (next-iteration))
-           (%step3 prototype-atomic-states pbase base-type-p)
+;;;; main description
 
-           (finally
-            (%step3 (positive-predicates
-                     (goal unit-problem)) base base-type-p)))
-         (%step4 mutices)
-         (%step5 loop-bases)
-         
-         *problem*)))))
+#|
 
-(defun %step0 (base)
-  "Add each object."
-  (push base (objects/const *problem*)))
+problem : pddl problem
+example : ss = (0 1 2 9)
+schedule : list of timed actions, must be sorted
+movements : list of (movement index resources)
+component : list of objects. they should (?) form a static component
+static-facts. It statically connects the component.
 
-(defun %step1 (prototype-atomic-states base base-type-p)
-  "Insert every states which is describing the base in the
+XXX `static-facts' is nessesary (? TODO ?) when there are multiple objects in the
+component because the new objects (corresponding to each step of the mfp)
+should also be connected.
+XXX this is not the case because the function already captures all facts
+related to each object.
+
+|#
+
+;;;; sub-functions
+(progn
+;;;; objects
+  (define-local-function %loop-objects ()
+    (append
+     (env-objects objects component)
+     (iter outer
+           (for i in ss)
+           (iter (for c in component)
+                 (in outer
+                     (collect
+                         (shallow-copy c :name (obj c i))))))))
+
+  (defun env-objects (objs component)
+    (iter (for o in objs)
+          (when (iter (for c in component)
+                      (never (pddl-supertype-p (type o) (type c))))
+            (collect o))))
+
+;;;; inits and goals
+
+  (define-local-function %loop-inits ()
+    (append
+     (%environment)
+     (mappend #'%component-states ss)
+     (mappend #'%releaser-states owner-releasers)))
+  (define-local-function %loop-goals ()
+    (append
+     (states-only (%environment)) ; remove the function-state
+     (mappend #'%component-states (make-eol ss (length ss)))
+     (mappend #'%releaser-states owner-releasers)))
+
+  (define-local-function %environment ()
+    "Returns The global states, that is, any states which is not describing the state
+of any components and is not describing the lock state. (owner has
+components in its arguments, so this is safe)"
+    (remove-if
+     (lambda (state)
+       (match state
+         ((pddl-function-state) state)
+         ((pddl-atomic-state)
+          (or
+           ;; removes the state of a component.
+           ;; owners are always contained in it.
+           (some (rcurry #'related-to state) component)
+           ;; Next, remove the locks and releasers.  Removing those states
+           ;; is safe because they are added later by %component-states and
+           ;; %releaser-states.
+           (some (lambda-match ((owner-lock _ l _)
+                                (instance-p l state)))
+                 owner-locks)
+           (some (lambda-match ((owner-lock _ l _)
+                                (instance-p l state)))
+                 owner-releasers)))))
+     init))
+
+  (define-local-function %component-states (i)
+    "The states which describes the component in the
    particular step in the unit plan, replacing the base
    with a new object in the steady-state."
-  (iter
-    (for proto in prototype-atomic-states)
-    (ematch proto
-      ((pddl-atomic-state name parameters)
-       (push (pddl-atomic-state
-              :name name
-              :parameters (substitute-if base
-                                         base-type-p
-                                         parameters))
-             (init *problem*)))
-      ((pddl-function-state name parameters type value body)
-       ;; !!! CAUTION !!! currently general numeric fluents are NOT safely supported.
-       ;; those functions defined by :ACTION-COST, such as TOTAL-COST, will not be copied
-       ;; because they are 0-arg function.
-       (push (pddl-function-state
-              :name name
-              :value value
-              :type type
-              :body body
-              :parameters (substitute-if base
-                                         base-type-p
-                                         parameters))
-             (init *problem*))))))
+    (iter
+      (for p in (%prototypes i))
+      (collect (shallow-copy p :parameters
+                             (iter (for o in (parameters p))
+                                   (collect (or (find o component) o)))))
+      (when-let ((owl (some (lambda-match
+                              ((owner-lock o)
+                               (instance-p p o)))
+                            owner-locks)))
+        ;; if p matches to an owner, then add the lock simultaneously
+        (collect
+            (match owl
+              ((owner-lock _ (pddl-predicate name) m)
+               (pddl-atomic-state
+                :name name
+                :parameters (mapcar (curry #'elt (parameters p)) m))))))))
 
-(defun %step2 (base base-type-p movements-shrinked mutices position)
-  "Adds every mutices which are accompanied with their owners to INIT."
-  (iter
-    (for mutex in mutices)
-    (ematch mutex
-      ((list owner-pred (pddl-predicate :name mname) indices :mutex _)
-       (when-let ((owner (find-if (lambda (owner)
-                                    (predicate-more-specific-p owner owner-pred))
-                                  (nth position movements-shrinked))))
-         (let* ((oparam (substitute-if base base-type-p
-                                       (parameters owner)))
-                (mparam (mapcar (rcurry #'nth oparam) indices))
-                (new-mutex (pddl-atomic-state :name mname
-                                              :parameters mparam)))
-           (push new-mutex (init *problem*)))))
-      ((list* _ _ _ :release _)))))
+  (define-local-function %prototypes (index)
+    (remove-if-not
+     (lambda (atomic-state)
+       (some (rcurry #'related-to atomic-state) component))
+     (timed-state-state
+      (timed-action-end
+       (nth (movement-index (nth index movements)) schedule)))))
 
-(defun %step3 (prototype-atomic-states base base-type-p)
-  "Add the goal description related to the bases."
-  (iter
-    (for proto in prototype-atomic-states)
-    (match proto
-      ((pddl-atomic-state name parameters)
-       (push (pddl-atomic-state
-              :name name
-              :parameters (substitute-if base
-                                         base-type-p
-                                         parameters))
-             (cdr (goal *problem*)))))))
+  (define-local-function %releaser-states (owner-releaser)
+    (match owner-releaser
+      ((owner-lock o r)
+       (when-let ((releasers (remove-if-not (rcurry #'instance-p r) init)))
+         (when (iter outer
+                     (for i in ss)
+                     (iter (for p in (%prototypes i))
+                           (in outer
+                               (never (instance-p o p)))))
+           releasers)))))
 
-(defun %step4 (mutices)
-  "Ensures every mutex-predicates are added to INIT if necessary.
-Also, ensures every release-predicates are removed from INIT if necessary.
-The owners are already added in the previous step."
-  (iter
-    (for mutex in mutices)
-    (match mutex
-      ((list owner-pred (pddl-predicate :name mname) indices :mutex _)
-       (iter (for owner in (remove-if-not
-                            (rcurry #'predicate-more-specific-p owner-pred)
-                            (init *problem*)))
-             (pushnew
-              (pddl-atomic-state
-               :name mname
-               :parameters (mapcar (rcurry #'nth (parameters owner)) indices))
-              (init *problem*)
-              :test #'eqstate)))
-      ((list owner-pred release indices :release _)
-       (iter (for owner in (remove-if-not
-                            (rcurry #'predicate-more-specific-p owner-pred)
-                            (init *problem*)))
-             (setf (init *problem*)
-                   (remove-if 
-                    (lambda (state)
-                      (and (typep state 'pddl-atomic-state)
-                           (%matches-to-mutex-p release indices owner state)))
-                    (init *problem*))))))))
 
-(defun %step5 (bases)
-  "Ensures all states except mutices and owners are restored to the loop initial state."
-  (appendf (cdr (goal *problem*))
-           (remove-if (lambda (state)
-                        (some (rcurry #'related-to state) bases))
-                      (states-only (init *problem*)))))
+;;;; main code
+  (defun build-loop-problem (problem ss schedule movements &rest component)
+    (ematch problem
+      ((pddl-problem name domain objects init)
+       (let ((*domain* domain))
+         (iter (for o in component) (assert (find o objects)))
+         (multiple-value-bind (owner-releasers owner-locks)
+             (mutex-predicates *domain*)
+           ;; (let* ((env-objects (set-difference objects loop-objects))
+           ;;        (init (categorize 
+           ;;               init :key 
+           ;;               (lambda (state)
+           ;;                 (if (some (rcurry #'related-to state) bases) t nil))))
+           ;;        (init/bases (gethash nil init))
+           ;;        (mutices (mutex-predicates *domain*)))
+           ;; NOTE!! the PROBLEM slot of each object still refers to the old
+           ;; problem!
+           (more-labels () (%loop-objects
+                            %loop-inits
+                            %loop-goals
+                            %environment
+                            %component-states
+                            %prototypes
+                            %releaser-states)
+             (shallow-copy
+              problem
+              :name (apply #'concatenate-symbols name 'ss ss)
+              :objects (%loop-objects)
+              :init (%loop-inits)
+              :goal (%loop-goals)))))))))
+
