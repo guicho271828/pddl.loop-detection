@@ -26,6 +26,7 @@
                  (:file :steady-state)
                  (:file :mfp)
 		 (:file :mfp-with-filtering)
+                 (:file :best-first-mfp)
 		 (:file :problem-builder)
                  (:file :write-problem)
                  (:file :integrated))))

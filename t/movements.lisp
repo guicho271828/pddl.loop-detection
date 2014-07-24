@@ -32,7 +32,7 @@
   (is (equalp '(((0) (1) (2) (3) (4) (5)))
               (mutex-focused-planning *movements* '(0)))))
 
-(test (filtering :depends-on mfp)
+(test (filtering :depends-on movements)
   (let ((searcher (mfp-with-filtering *movements* :verbose t))
         (tree (steady-state *movements*))
         (current (make-array (length *movements*)
@@ -53,3 +53,10 @@
             (print
              (funcall searcher (coerce current 'list))))
           (vector-pop current))))
+
+(test (bfs-mfp :depends-on movements)
+  (iter (repeat 5)
+        (for (plan . handler)
+             initially (best-first-mfp *movements*)
+             then (funcall handler 0))
+        (print plan)))
