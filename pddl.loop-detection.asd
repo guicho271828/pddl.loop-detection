@@ -12,7 +12,6 @@
   :author "Masataro Asai"
   :license "LLGPL"
   :depends-on (:pddl :pddl.scheduler
-                     :guicho-utilities.threading
                      :eazy-a-star
                      :eazylazy
                      :inferior-shell

@@ -2,28 +2,6 @@
 (in-package :pddl.loop-detection-test)
 (in-suite :pddl.loop-detection)
 
-(defvar steady-states)
-
-(test (steady-states :depends-on extract-movements)
-  (finishes
-    (setf steady-states 
-	  (exploit-steady-states movements-shrinked)))
-  (for-all ((ss (lambda () (random-elt steady-states))))
-    (when (>= (length ss) 2)
-      (map-combinations
-       (lambda (list)
-         (is (null (intersection
-                    (first list) (second list)
-                    :test #'eqstate))))
-       (mapcar (rcurry #'nth movements-shrinked) ss)
-       :length 2))
-    (is (= 0 (first ss)))))
-
-(test (search-loop-path :depends-on steady-states)
-  (time (search-loop-path
-	 movements-shrinked
-	 (lastcar steady-states))))
-
 (defvar loopable-steady-states)
 (test (loopable-steady-states :depends-on steady-states)
   (format t "~%testing loopable-steady-states. It takes time so please wait...~2%")

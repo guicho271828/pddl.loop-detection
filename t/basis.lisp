@@ -39,7 +39,7 @@
       (is (= 21 (cost last-env)))
       (is-true (goal-p makep (states last-env)))
       (setf *schedule*
-            (sort-timed-actions
+            (sort-schedule
              (reschedule plan :minimum-slack :verbose t)))
       (print-timed-action-graphically *schedule*)
       (is (= 17 (timed-state-time (timed-action-end (lastcar *schedule*))))))))

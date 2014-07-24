@@ -1,9 +1,13 @@
 (in-package :pddl.loop-detection-test)
 (in-suite :pddl.loop-detection)
 
-(test (extract-movements :depends-on basis)
-  (match (extract-movements
-          :p2 (sort-schedule *schedule*) makep)
+(defvar *movements*)
+
+(test (movements :depends-on basis)
+  (finishes
+    (setf *movements*
+        (extract-movements :p2 (sort-schedule *schedule*) makep)))
+  (match *movements*
     ((list (list 3 (pddl-atomic-state
                     :name 'using
                     :parameters
@@ -18,10 +22,14 @@
            (list 11))
      (pass "the schedule works as expected"))))
 
-
-(test (steady-states-tree :depends-on movement)
+(test (steady-state :depends-on movements)
   (is (equalp
-       '(0 (1 (3 (4 5) 5) (4 5) 5) (3 (4 5) 5) (4 5) 5)
-       (steady-state-tree (extract-movements :p2 *schedule* makep)))))
+       '(0 (1 (2 3) 3) (2 3) 3)
+       (steady-state *movements* nil))))
+
+
+(test (mfp)
+  (is (equalp '(((0) (1) (2) (3) (4) (5)))
+              (mutex-focused-planning *movements* '(0)))))
 
 

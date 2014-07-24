@@ -45,3 +45,8 @@ The given schedule should be sorted beforehand."
   (cons index resources))
 (defpattern movement (index resources)
   `(cons ,index ,resources))
+
+(defun movement-resources (movement)
+  (cdr movement))
+(defun movement-index (movement)
+  (car movement))

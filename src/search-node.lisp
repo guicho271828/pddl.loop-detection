@@ -61,7 +61,7 @@
         (collect (current-state node) at beginning)))
 
 @export
-(defun search-loop-path (movements steady-state &key (verbose t))
+(defun mutex-focused-planning (movements steady-state &key (verbose t))
   "returns two values: list of paths found, and the cost
  (which is always the same as long as the path exist)"
   (let* ((*state-hash* (make-hash-table :test #'equal))
@@ -99,19 +99,12 @@
         (a*-search-clos start goal :verbose verbose))
       (values solutions cost))))
 
-(defun %make-state-node (movements current-state goal n)
-  (make-instance
-   'state-node
-   :goal goal
-   :movements movements
-   :current-state (substitute (the fixnum (1+ n)) n current-state)))
+
 
 (declaim (ftype (function (fixnum fixnum list list) boolean) movable)) 
 (defun movable (n goal-n used movements)
   (let ((n2 (1+ n))
         (carry-out-index (length movements)))
-    @type fixnum carry-out-index
-    @type fixnum n2
     (and ; include n if
      (not (= n goal-n)) ; the goal is not achieved yet
      (< n carry-out-index) ; n is not already the carry-out.
@@ -119,8 +112,8 @@
          t          ; if n+1 is the carry-out, it doesn't consume resources.
          (null      ; else, the resource constraint should hold
           (intersection
-           (nth n2 movements)
-           (set-difference used (nth n movements)
+           (movement-resources (nth n2 movements))
+           (set-difference used (movement-resources (nth n movements))
                            :test #'eqstate)
            :test #'eqstate))))))
 
@@ -130,14 +123,23 @@
     ;; current: number*
     (let* ((goal (goal state))
            (goal-state (current-state goal))
-           (used (mappend (rcurry #'nth movements) current-state)))
-      ;; used: mutices currently in use
-      (mapcar
-       (curry #'%make-state-node movements current-state goal)
-       (iter (for n in current-state)
-             (for goal-n in goal-state)
-             (when (movable n goal-n used movements)
-               (collect n)))))))
+           (used (iter (for index in current-state)
+                       (appending
+                        (movement-resources
+                         (nth index movements))))))
+      ;; used: the sum of resources currently in use
+      (iter (for n in current-state)
+            (for goal-n in goal-state)
+            (when (movable n goal-n used movements)
+              (collecting
+               (%make-state-node movements current-state goal n)))))))
+
+(defun %make-state-node (movements current-state goal n)
+  (make-instance
+   'state-node
+   :goal goal
+   :movements movements
+   :current-state (substitute (the fixnum (1+ n)) n current-state)))
 
 #|
 

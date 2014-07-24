@@ -89,11 +89,15 @@
   (let ((owls (mutex-predicates make)))
     (is-true
      (some (lambda-match
-             ((owner-lock (eq using) (eq notusing) (list 1)) t))
+             ((owner-lock (pddl-predicate :name 'using)
+                          (pddl-predicate :name 'notusing)
+                          (list 1)) t))
            owls))
     (is-true
      (some (lambda-match
-             ((owner-lock (eq using) (eq available) (list 0)) t))
+             ((owner-lock (pddl-predicate :name 'using)
+                          (pddl-predicate :name 'available)
+                          (list 0)) t))
            owls))))
 
 

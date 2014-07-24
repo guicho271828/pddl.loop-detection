@@ -19,29 +19,25 @@
     (when verbose (format t " ... No loop"))
     (return-from rec :fail))
 
-  (declaim (inline mutex-focused-planning))
+  (declaim (inline mfp-with-filtering))
   (declaim (ftype (function (list cons &key (:verbose boolean))
                             (values
                              (function ((function (list) list)) list)
                              (function (list) (or list keyword))))
-                  mutex-focused-planning))
+                  mfp-with-filtering))
 
   @export
-  (defun mutex-focused-planning
-      (movements steady-state-tree &key (verbose t))
+  (defun mfp-with-filtering
+      (movements &key (verbose t))
     (let* ((m-num (length movements))
-           (buckets (make-array m-num :initial-element nil))
-           (tree steady-state-tree))
-      (values
-       (lambda (update-branch)
-         (setf tree (funcall update-branch tree)))
-       (named-lambda rec (ss) ; evaluation method
+           (buckets (make-array m-num :initial-element nil)))
+      (named-lambda rec (ss steady-state-tree) ; evaluation method
          (let ((len (1- (length ss))))
            (more-labels () (%print-open %check-duplicates %fail)
              (%print-open)
              (%check-duplicates)
-             (when-let ((results (search-loop-path movements ss)))
+             (when-let ((results (mutex-focused-planning movements ss)))
                (nconcf (aref buckets len) results)
                (return-from rec results))
-             (%fail))))))))
+             (%fail)))))))
 

@@ -48,19 +48,27 @@ the second requires N conses where N is the length of a steady state.
         (unless (conflict-p this now)
           (let ((next (append this now)) ; next resources
                 (len (length rest)))
-            (lcons i
-                   (iter (for rest2 on rest)
-                         (for next-i from (+ 1 i) to (+ 1 i len))
-                         (for child = (%ss-rec rest2 next next-i))
-                         ;; if conflict has happened, skip it
-                         (when child
-                           (collecting child)))))))))
+            (if lazy
+                (lcons i
+                       (iter (for rest2 on rest)
+                             (for next-i from (+ 1 i) to (+ 1 i len))
+                             (for child = (%ss-rec rest2 next next-i))
+                             ;; if conflict has happened, skip it
+                             (when child
+                               (collecting child))))
+                (cons i
+                      (iter (for rest2 on rest)
+                            (for next-i from (+ 1 i) to (+ 1 i len))
+                            (for child = (%ss-rec rest2 next next-i))
+                            ;; if conflict has happened, skip it
+                            (when child
+                              (collecting child))))))))))
 
   @export @doc "Takes a list of movements.
 Returns a cons tree of steady states. Each steady state is
 represented by a leaf or a branch of the tree. Each leaf or a branch node
 is a mutex position index."
-  (defun steady-state (movements)
+  (defun steady-state (movements &optional (lazy t))
     (more-labels () (%ss-rec %ss-leaf)
        (match movements
          ((list* (movement _ resources) rest)
