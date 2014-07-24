@@ -57,6 +57,6 @@
 (test (bfs-mfp :depends-on movements)
   (iter (repeat 5)
         (for (plan . handler)
-             initially (best-first-mfp *movements*)
+             initially (best-first-mfp *movements* :verbose t)
              then (funcall handler 0))
         (print plan)))

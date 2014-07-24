@@ -10,11 +10,14 @@
 (defun best-first-mfp (movements &key verbose)
   (let ((searcher (mfp-with-filtering movements :verbose verbose)))
     (labels ((eval-branch (current successors open)
-               (cons (funcall searcher current)
+               (cons (funcall searcher (reverse current))
                      (lambda (real-cost)
-                       (print successors)
                        (open-minimum
-                        (append-queue real-cost successors open)))))
+                        (append-queue real-cost
+                                      (mapcar (lambda (branch)
+                                                (bfs-state current branch))
+                                              successors)
+                                      open)))))
              (open-minimum (open)
                (multiple-value-bind (popped open) (pop-queue-minimum open)
                  (ematch popped
