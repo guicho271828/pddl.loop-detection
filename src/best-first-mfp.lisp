@@ -10,18 +10,19 @@
 (defun best-first-mfp (movements &key verbose)
   (let ((searcher (mfp-with-filtering movements :verbose verbose)))
     (labels ((eval-branch (current successors open)
-               (let ((plan (funcall searcher (reverse current))))
-                 (cons plan
-                       (lambda (real-cost)
-                         (when verbose
-                           (format t "~&Plan: ~a, Given value : ~a"
-                                   plan real-cost))
-                         (open-minimum
-                          (append-queue real-cost
-                                        (mapcar (lambda (branch)
-                                                  (bfs-state current branch))
-                                                successors)
-                                        open))))))
+               (let* ((ss (reverse current))
+                      (plan (funcall searcher ss)))
+                 (values plan ss
+                  (lambda (real-cost)
+                    (when verbose
+                      (format t "~&Plan: ~a, Given value : ~a"
+                              plan real-cost))
+                    (open-minimum
+                     (append-queue real-cost
+                                   (mapcar (lambda (branch)
+                                             (bfs-state current branch))
+                                           successors)
+                                   open))))))
              (open-minimum (open)
                (multiple-value-bind (popped open) (pop-queue-minimum open)
                  (ematch popped

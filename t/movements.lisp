@@ -56,13 +56,13 @@
 
 (test (bfs-mfp :depends-on movements)
   (iter (repeat 5)
-        (for (plan . handler)
+        (for (values plan ss handler)
              initially (best-first-mfp *movements* :verbose nil)
              then (funcall handler 0))
         (finishes
           (print plan)))
   (iter (repeat 5)
-        (for (plan . handler)
+        (for (values plan ss handler)
              initially (best-first-mfp *movements* :verbose nil)
              then (funcall handler (random 5)))
         (finishes
@@ -70,7 +70,9 @@
   ;; what happens when the number exceeds 8 ?
   (signals warning
     (iter (repeat 15)
-          (for (plan . handler)
+          (for (values plan ss handler)
                initially (best-first-mfp *movements* :verbose nil)
                then (funcall handler (random 5)))
           (print plan))))
+
+;; TODO -- mfp that can handle components
