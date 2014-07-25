@@ -9,13 +9,13 @@
         (extract-movements :p2 (sort-schedule *schedule*) makep)))
   (match *movements*
     ((list (list 3 (pddl-atomic-state
-                    :name 'using
+                    :name 'making
                     :parameters
                     (list (pddl-object :name 'm1)
                           (pddl-object :name 'p2))))
            (list 6)
            (list 9 (pddl-atomic-state
-                    :name 'using
+                    :name 'making
                     :parameters
                     (list (pddl-object :name 'm2)
                           (pddl-object :name 'p2))))
