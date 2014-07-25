@@ -2,34 +2,14 @@
 (in-package :pddl.loop-detection-test)
 (in-suite :pddl.loop-detection)
 
-(defvar loopable-steady-states)
-(test (loopable-steady-states :depends-on steady-states)
-  (format t "~%testing loopable-steady-states. It takes time so please wait...~2%")
-  (finishes
-    (time (setf loopable-steady-states
-		(exploit-loopable-steady-states
-                 movements-shrinked
-                 steady-states :verbose :modest)))))
-
 (defparameter prob
   cell-assembly-model2b-1)
 (defparameter base-type
   (type (object prob 'b-0)))
 
-(defvar steady-state-problems)
-
-(test (build-problem :depends-on loopable-steady-states)
-  (finishes
-    (time
-     (setf steady-state-problems
-	   (iter (for loop-plan in loopable-steady-states)
-		 (collect
-		     (build-steady-state-problem
-		      prob loop-plan schedule
-		      movements-shrinked movements-indices-shrinked base-type)))))))
+;;;; these tests are obsoleted, but might be helpful to read later
 
 (test (build-problem-1 :depends-on build-problem)
-  
   ;; regression test : the conses are always fresh
   (for-all ((problem1 (curry #'random-elt steady-state-problems))
             (problem2 (curry #'random-elt steady-state-problems)
@@ -104,6 +84,8 @@ no instance of owner predicate
  ~a was found though a mutex
  ~a is declared"
                  owner state))))))))))
+
+
 
 (test (write-problem :depends-on build-problem)
   
