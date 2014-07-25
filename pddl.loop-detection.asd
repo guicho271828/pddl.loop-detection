@@ -28,7 +28,6 @@
 		 (:file :mfp-with-filtering)
                  (:file :best-first-mfp)
 		 (:file :problem-builder)
-                 (:file :write-problem)
                  (:file :integrated))))
   :description ""
   :long-description
