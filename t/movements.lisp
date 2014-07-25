@@ -75,4 +75,15 @@
                then (funcall handler (random 5)))
           (print plan))))
 
-;; TODO -- mfp that can handle components
+
+;; run them automatically
+(test exploit-loop-problems
+  (finishes
+    (let ((*domain* make) (*problem* makep))
+      (exploit-loop-problems
+       (pddl-plan :actions (parse-plan +makeplan+))
+       (object *problem* :p1)
+       (constantly 0)
+       :verbose t))))
+
+
