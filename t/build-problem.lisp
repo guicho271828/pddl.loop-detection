@@ -18,19 +18,6 @@
           (terpri)
           (print-pddl-object problem *standard-output*))))
 
-(test exploit-loop-problems-with-evaluation
-  (finishes
-    (let ((*domain* make) (*problem* makep))
-      (print
-       (multiple-value-list
-        (exploit-loop-problems
-         (pddl-plan :actions (parse-plan +makeplan+))
-         (object *problem* :p1)
-         #'evaluate-loop-problem
-         :verbose t))))))
-
-
-
 ;;;; write-problem
 ;; (let ((tmpdir (merge-pathnames (string-downcase (gensym "cell-assebly")) #p"/tmp/")))
 
