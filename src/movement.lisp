@@ -14,7 +14,8 @@
 (defun extract-resources (object sorted-schedule
                           &optional
                             (*problem* *problem*)
-                            (*domain* (domain *problem*)))
+                            (*domain*
+                             (or *domain* (domain *problem*))))
   (let ((owls (mutex-predicates *domain*))
         (object (object *problem* object)))
     (iter (for ta in sorted-schedule)
@@ -29,11 +30,15 @@
                   states)))))))
 
 @export
-(defun extract-movements (object schedule *domain*)
+(defun extract-movements (object schedule
+                          &optional
+                            (*problem* *problem*)
+                            (*domain*
+                             (or *domain* (domain *problem*))))
   "Returns a list of (number . owners) in a schedule.
 The given schedule should be sorted beforehand."
   (iter (for resources in
-             (extract-resources object schedule *domain*))
+             (extract-resources object schedule))
         (for prev previous resources)
         (for i from 0)
         (when (or (zerop i)
