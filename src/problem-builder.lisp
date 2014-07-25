@@ -4,11 +4,13 @@
 ;;;; utility
 
 (defun obj (obj n)
-  (intern (format nil "~a~a" (name obj) n)))
+  (intern (format nil "~a-~a" (name obj) n)))
 
 (defun states-only (states)
   ;; remove function-states and takes only atomic-states
-  (remove-if-not (rcurry #'typep 'pddl-atomic-state) states))
+  (remove-if (lambda (s)
+               (typep s 'pddl-function-state))
+             states))
 
 (defun instance-p (predicate atomic-state)
   (and (eqname atomic-state predicate)
@@ -73,11 +75,14 @@ components in its arguments, so this is safe)"
      (lambda (state)
        (match state
          ((pddl-function-state) state)
-         ((pddl-atomic-state)
+         ((pddl-atomic-state parameters)
           (or
            ;; removes the state of a component.
            ;; owners are always contained in it.
-           (some (rcurry #'related-to state) component)
+           (some (lambda (p)
+                   (some (lambda (c)
+                           (pddl-supertype-p (type p) (type c)))
+                         component)) parameters)
            ;; Next, remove the locks and releasers.  Removing those states
            ;; is safe because they are added later by %component-states and
            ;; %releaser-states.
@@ -95,9 +100,14 @@ components in its arguments, so this is safe)"
    with a new object in the steady-state."
     (iter
       (for p in (%prototypes i))
-      (collect (shallow-copy p :parameters
-                             (iter (for o in (parameters p))
-                                   (collect (or (find o component) o)))))
+      (collect
+          (shallow-copy
+           p :parameters
+           (iter (for o in (parameters p))
+                 (collect
+                     (if (find o component)
+                         (shallow-copy o :name (obj o i))
+                         o)))))
       (when-let ((owl (some (lambda-match
                               ((owner-lock o)
                                (instance-p p o)))
@@ -131,8 +141,9 @@ components in its arguments, so this is safe)"
 
 
 ;;;; main code
-  (defun build-loop-problem (problem ss schedule movements &rest component)
-    (ematch problem
+  @export
+  (defun loop-problem (*problem* ss schedule movements &rest component)
+    (ematch *problem*
       ((pddl-problem name domain objects init)
        (let ((*domain* domain))
          (iter (for o in component) (assert (find o objects)))
@@ -147,17 +158,18 @@ components in its arguments, so this is safe)"
            ;;        (mutices (mutex-predicates *domain*)))
            ;; NOTE!! the PROBLEM slot of each object still refers to the old
            ;; problem!
-           (more-labels () (%loop-objects
-                            %loop-inits
-                            %loop-goals
-                            %environment
-                            %component-states
-                            %prototypes
-                            %releaser-states)
-             (shallow-copy
-              problem
-              :name (apply #'concatenate-symbols name 'ss ss)
-              :objects (%loop-objects)
-              :init (%loop-inits)
-              :goal (%loop-goals)))))))))
+           (let ((*problem* (shallow-copy *problem*)))
+             (more-labels () (%loop-objects
+                              %loop-inits
+                              %loop-goals
+                              %environment
+                              %component-states
+                              %prototypes
+                              %releaser-states)
+               (reinitialize-instance
+                *problem*
+                :name (apply #'concatenate-symbols name 'ss ss)
+                :objects (%loop-objects)
+                :init (%loop-inits)
+                :goal `(and ,@(%loop-goals)))))))))))
 

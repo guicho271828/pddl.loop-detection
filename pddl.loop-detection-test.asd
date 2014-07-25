@@ -23,7 +23,8 @@
                  (:file :mutex)
                  ;; problem functions
                  (:file :basis)
-                 (:file :movements))))
+                 (:file :movements)
+                 (:file :build-problem))))
   :perform (load-op :after (op c) 
 		    (eval (read-from-string "(fiveam:run! :pddl.loop-detection)"))
 		    (asdf:clear-system c)))
