@@ -5,8 +5,9 @@
 
 @export
 (defun write-problem (problem
-                      &optional (basedir
-                                 (user-homedir-pathname)))
+                      &optional
+                        (basedir (user-homedir-pathname))
+                        verbose)
   (let ((path 
          (merge-pathnames
           (let ((*print-escape* nil))
@@ -14,8 +15,9 @@
                     (name (domain problem))
                     (name problem)))
           (pathname-as-directory basedir))))
-    (ensure-directories-exist path :verbose t)
-    (format *shared-output* "~&Writing ~a~&" path)
+    (ensure-directories-exist path :verbose verbose)
+    (when verbose
+      (format t "~&Writing ~a~&" path))
     (with-open-file (s path
                        :direction :output
                        :if-exists :supersede

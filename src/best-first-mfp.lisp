@@ -15,7 +15,7 @@
                  (values plan ss
                   (lambda (real-cost)
                     (when verbose
-                      (format t "~&Plan: ~a, Given value : ~a"
+                      (format t "~&Plan: ~a~%Given value : ~a"
                               plan real-cost))
                     (open-minimum
                      (append-queue real-cost
