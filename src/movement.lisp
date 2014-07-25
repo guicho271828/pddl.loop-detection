@@ -50,3 +50,22 @@ The given schedule should be sorted beforehand."
   (cdr movement))
 (defun movement-index (movement)
   (car movement))
+
+
+@export
+(defun merge-movements (&rest more-movements)
+  (if (null more-movements)
+      nil
+      (let ((hash (make-hash-table)))
+        (flet ((accumulate (movements)
+                 (iter (for m in movements)
+                       (match m
+                         ((movement index resources)
+                          (setf (gethash index hash)
+                                (union (gethash index hash)
+                                       resources
+                                       :test #'eqstate)))))))
+          (mapc #'accumulate more-movements))
+        (let (acc)
+          (maphash (lambda (k v) (push (movement k v) acc)) hash)
+          acc))))
