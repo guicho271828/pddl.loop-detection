@@ -2,9 +2,7 @@
 (in-suite :pddl.loop-detection)
 
 
-
-
-(test (build-problem)
+(test (build-problem :depends-on movements)
   (finishes
     (iter (repeat 15)
           (for (values plan ss handler)
@@ -19,6 +17,18 @@
           (print problem)
           (terpri)
           (print-pddl-object problem *standard-output*))))
+
+(test exploit-loop-problems-with-evaluation
+  (finishes
+    (let ((*domain* make) (*problem* makep))
+      (print
+       (multiple-value-list
+        (exploit-loop-problems
+         (pddl-plan :actions (parse-plan +makeplan+))
+         (object *problem* :p1)
+         #'evaluate-loop-problem
+         :verbose t))))))
+
 
 
 ;;;; write-problem
