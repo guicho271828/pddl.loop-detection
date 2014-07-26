@@ -84,6 +84,19 @@
        (pddl-plan :actions (parse-plan +makeplan+))
        (object *problem* :p1)
        (constantly 0)
-       :verbose t))))
+       :verbose t)))
+
+
+  (let (start end result)
+    (setf start (get-universal-time))
+    (let ((*domain* make) (*problem* makep))
+      (exploit-loop-problems
+       (pddl-plan :actions (parse-plan +makeplan+))
+       (object *problem* :p1)
+       (constantly 0)
+       :verbose t
+       :timeout 1))
+    (setf end (get-universal-time))
+    (is (< (- end start) 2))))
 
 

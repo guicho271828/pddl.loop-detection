@@ -2,17 +2,13 @@
   This file is a part of pddl.loop-detection project.
 |#
 
-(in-package :cl-user)
-(defpackage pddl.loop-detection-asd
-  (:use :cl :asdf))
-(in-package :pddl.loop-detection-asd)
-
 (defsystem pddl.loop-detection
   :version "0.1"
   :author "Masataro Asai"
   :license "LLGPL"
   :depends-on (:pddl :pddl.scheduler
                      :eazy-a-star
+                     :trivial-timeout
                      :eazylazy
                      :inferior-shell
                      :osicat)
@@ -28,7 +24,7 @@
 		 (:file :mfp-with-filtering)
                  (:file :best-first-mfp)
 		 (:file :problem-builder)
-                 (:file :integrated))))
+                 (:file :search))))
   :description ""
   :long-description
   #.(with-open-file (stream (merge-pathnames
@@ -46,5 +42,5 @@
 
 (defmethod asdf:perform ((op asdf:test-op)
 			 (system (eql (asdf:find-system :pddl.loop-detection))))
-  (funcall (find-symbol "RUN!" (find-package :fiveam)) :pddl.loop-detection)
+  (eval (read-from-string "(fiveam:run! 'pddl.loop-detection)"))
   t)
