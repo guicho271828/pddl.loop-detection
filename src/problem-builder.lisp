@@ -94,19 +94,20 @@ components in its arguments, so this is safe)"
                  owner-releasers)))))
      init))
 
-  (define-local-function %component-states (i)
+  (define-local-function %component-states (step &optional
+                                                 (object-number step))
     "The states which describes the component in the
    particular step in the unit plan, replacing the base
    with a new object in the steady-state."
     (iter
-      (for p in (%prototypes i))
+      (for p in (%prototypes step))
       (collect
           (shallow-copy
            p :parameters
            (iter (for o in (parameters p))
                  (collect
                      (if (find o component)
-                         (shallow-copy o :name (obj o i))
+                         (shallow-copy o :name (obj o object-number))
                          o)))))
       (when-let ((owl (some (lambda-match
                               ((owner-lock o)
