@@ -4,7 +4,8 @@
 
 
 (declaim (ftype (function
-                 (pddl-plan t (function (pddl-problem list list list list)
+                 (pddl-plan t (function (pddl-problem list list list list
+                                                      &key (:verbose boolean))
                                         real)
                             &key (:verbose boolean))
                  (values list list real))
@@ -36,7 +37,8 @@ Please wait a moment..."))
                                     ss
                                     schedule
                                     movements
-                                    component))
+                                    component
+                                    :verbose verbose))
           (finding plan minimizing real-cost into best-plan)
           (finding ss minimizing real-cost into best-ss)
           (finding real-cost minimizing real-cost into best-cost)
