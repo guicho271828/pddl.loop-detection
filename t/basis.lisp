@@ -1,11 +1,35 @@
 (in-package :pddl.loop-detection-test)
 (in-suite :pddl.loop-detection)
 
-(defvar +makeplan+
-  '((start p1 s1 m1) (make p1 s0 s1 m1) (end p1 s1 m1)
-    (start p1 s2 m2) (make p1 s1 s2 m2) (end p1 s2 m2)
-    (start p2 s1 m1) (make p2 s0 s1 m1) (end p2 s1 m1)
-    (start p2 s2 m2) (make p2 s1 s2 m2) (end p2 s2 m2)))
+(define (domain make)
+  (:requirements :strips :action-costs)
+  (:types machine step product)
+  (:predicates (available ?m - machine)
+               (use ?m - machine ?s - step)
+               (notmaking ?p - product)
+               (making ?m - machine ?p - product)
+               (made ?p - product ?step - step))
+  (:functions (total-cost)
+              (span ?p - product ?s - step))
+  (:action start
+           :parameters (?p - product ?s - step ?m - machine)
+           :precondition (and (available ?m) (use ?m ?s) (notmaking ?p))
+           :effect (and (making ?m ?p)
+                        (not (notmaking ?p))
+                        (not (available ?m))
+                        (increase (total-cost) 1)))
+  (:action make
+           :parameters (?p - product ?s1 ?s2 - step ?m - machine)
+           :precondition (and (making ?m ?p) (made ?p ?s1))
+           :effect (and (not (made ?p ?s1)) (made ?p ?s2)
+                        (increase (total-cost) (span ?p ?s2))))
+  (:action end
+           :parameters (?p - product ?s - step ?m - machine)
+           :precondition (and (making ?m ?p) (made ?p ?s))
+           :effect (and (not (making ?m ?p))
+                        (notmaking ?p)
+                        (available ?m)
+                        (increase (total-cost) 1))))
 
 (define (problem makep)
   (:domain make)
@@ -27,6 +51,12 @@
          (= (span p2 s2) 3))
   (:goal (and (made p1 s2) (made p2 s2)))
   (:metric minimize (total-cost)))
+
+(defvar +makeplan+
+  '((start p1 s1 m1) (make p1 s0 s1 m1) (end p1 s1 m1)
+    (start p1 s2 m2) (make p1 s1 s2 m2) (end p1 s2 m2)
+    (start p2 s1 m1) (make p2 s0 s1 m1) (end p2 s1 m1)
+    (start p2 s2 m2) (make p2 s1 s2 m2) (end p2 s2 m2)))
 
 (defvar *schedule*)
 
