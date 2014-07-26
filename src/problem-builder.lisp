@@ -65,8 +65,17 @@ related to each object.
     (states-only
      (append
       (%environment) ; remove the function-state
-      (mappend #'%component-states (make-eol ss (length ss)) ss)
+      (mappend #'%component-states (make-eol ss (1- (length movements))) ss)
       (mappend #'%releaser-states owner-releasers))))
+
+  (define-local-function %component-state-p (p)
+    (some (lambda (c) (pddl-supertype-p (type p) (type c))) component))
+  (define-local-function %lock-p (p)
+    (some (lambda-match ((owner-lock _ l) (instance-p l p))) owner-locks))
+  (define-local-function %releaser-p (p)
+    (some (lambda-match ((owner-lock _ l) (instance-p l p))) owner-releasers))
+  (define-local-function %owner-p (p)
+    (some (lambda-match ((owner-lock o) (instance-p p o))) owner-locks))
 
   (define-local-function %environment ()
     "Returns The global states, that is, any states which is not describing the state
@@ -75,24 +84,18 @@ components in its arguments, so this is safe)"
     (remove-if
      (lambda (state)
        (match state
-         ((pddl-function-state) state)
+         ((pddl-function-state parameters)
+          (some #'%component-state-p parameters))
          ((pddl-atomic-state parameters)
           (or
            ;; removes the state of a component.
            ;; owners are always contained in it.
-           (some (lambda (p)
-                   (some (lambda (c)
-                           (pddl-supertype-p (type p) (type c)))
-                         component)) parameters)
-           ;; Next, remove the locks and releasers.  Removing those states
-           ;; is safe because they are added later by %component-states and
-           ;; %releaser-states.
-           (some (lambda-match ((owner-lock _ l _)
-                                (instance-p l state)))
-                 owner-locks)
-           (some (lambda-match ((owner-lock _ l _)
-                                (instance-p l state)))
-                 owner-releasers)))))
+           (some #'%component-state-p parameters)
+           ;; Next, remove the locks and releasers related to the
+           ;; component.  Removing those states is safe because they are
+           ;; added later by %component-states and %releaser-states.
+           (%lock-p state)
+           (%releaser-p state)))))
      init))
 
   (define-local-function %component-states (step &optional
@@ -110,17 +113,9 @@ components in its arguments, so this is safe)"
                      (if (find o component)
                          (shallow-copy o :name (obj o object-number))
                          o)))))
-      (when-let ((owl (some (lambda-match
-                              ((owner-lock o)
-                               (instance-p p o)))
-                            owner-locks)))
+      (when-let ((owl (%owner-p p)))
         ;; if p matches to an owner, then add the lock simultaneously
-        (collect
-            (match owl
-              ((owner-lock _ (pddl-predicate name) m)
-               (pddl-atomic-state
-                :name name
-                :parameters (mapcar (curry #'elt (parameters p)) m))))))))
+        (collect (owner->lock owl p)))))
 
   (define-local-function %prototypes (index)
     (remove-if-not
@@ -167,7 +162,11 @@ components in its arguments, so this is safe)"
                               %environment
                               %component-states
                               %prototypes
-                              %releaser-states)
+                              %releaser-states
+                              %lock-p
+                              %releaser-p
+                              %component-state-p
+                              %owner-p)
                (reinitialize-instance
                 *problem*
                 :name (apply #'concatenate-symbols name 'ss ss)

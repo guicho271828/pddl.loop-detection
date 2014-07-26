@@ -4,8 +4,9 @@
 
 
 (declaim (ftype (function
-                 (pddl-plan t (function (pddl-problem list list list list
-                                                      &key (:verbose boolean))
+                 (pddl-plan t (function (pddl-problem
+                                         list list list list
+                                         &key (:verbose boolean))
                                         real)
                             &key (:verbose boolean))
                  (values list list real))
@@ -13,6 +14,8 @@
 
 @export
 (defun exploit-loop-problems (pddl-plan component evaluator &key verbose)
+  "Returns 3 values: loop-path, ss, the real-cost of the loop path returned
+by the evaluator."
   (let* ((*problem* (problem pddl-plan))
          (*domain* (domain pddl-plan))
          (component (ensure-list component))
