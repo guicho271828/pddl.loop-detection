@@ -62,10 +62,11 @@ related to each object.
      (mappend #'%component-states ss)
      (mappend #'%releaser-states owner-releasers)))
   (define-local-function %loop-goals ()
-    (append
-     (states-only (%environment)) ; remove the function-state
-     (mappend #'%component-states (make-eol ss (length ss)))
-     (mappend #'%releaser-states owner-releasers)))
+    (states-only
+     (append
+      (%environment) ; remove the function-state
+      (mappend #'%component-states (make-eol ss (length ss)) ss)
+      (mappend #'%releaser-states owner-releasers))))
 
   (define-local-function %environment ()
     "Returns The global states, that is, any states which is not describing the state
