@@ -57,7 +57,7 @@
       (exploit-loop-problems
        (pddl-plan :actions (parse-plan +makeplan+))
        (object *problem* :p1)
-       (constantly 0)
+       (constant-results 0)
        :verbose t))))
 
 (test exploit-loop-problems-with-timeout
@@ -67,7 +67,7 @@
       (exploit-loop-problems
        (pddl-plan :actions (parse-plan +makeplan+))
        (object *problem* :p1)
-       (constantly 0)
+       (constant-results 0)
        :verbose t
        :timeout 1))
     (setf end (get-universal-time))

@@ -2,16 +2,29 @@
 (in-package :pddl.loop-detection)
 (cl-syntax:use-syntax :annot)
 
+@export
+(defclass evaluation-result ()
+  ((ss :reader ss :initarg :ss)
+   (cost :reader cost :initarg :cost)))
+
+@export
+(defun evaluation-result-< (result1 result2)
+  (< (cost result1) (cost result2)))
+
+@export
+(defun evaluation-result-min (result1 result2)
+  (if (evaluation-result-< result1 result2)
+      result1 result2))
 
 (declaim (ftype (function
                  (pddl-plan t (function (pddl-problem
                                          list list list list
                                          &key (:verbose boolean))
-                                        real)
+                                        evaluation-result)
                             &key
                             (:verbose boolean)
                             (:timeout fixnum))
-                 (values list list real))
+                 evaluation-result)
                 exploit-loop-problems))
 
 (define-local-function %exploit-main ()
@@ -21,7 +34,8 @@
          (*domain* (domain pddl-plan))
          (component (ensure-list component))
          (schedule (sort-schedule
-                    (reschedule pddl-plan :minimum-slack
+                    (reschedule pddl-plan
+                                :minimum-slack
                                 :verbose verbose)))
          (movements
           (iter (for c in component)
@@ -29,25 +43,16 @@
                  (extract-movements c schedule)
                  by #'merge-movements))))
     (iter (for (values plan ss handler)
-               initially
-               (best-first-mfp movements :verbose verbose)
-               then
-               (funcall handler cost))
+               initially (best-first-mfp movements :verbose verbose)
+               then (funcall handler (cost result)))
           (while handler)
-          (for cost = (funcall evaluator
-                               *problem*
-                               ss
-                               schedule
-                               movements
-                               component
-                               :verbose verbose))
-          (when (< cost best-cost)
-            (when verbose
-              (format t "~&Best plan updated: ~@{~a~^, ~}"
-                      plan ss cost))
-            (setf best-plan plan
-                  best-ss ss
-                  best-cost cost)))))
+          (for result = 
+               (funcall evaluator *problem* ss
+                        schedule movements component
+                        :verbose verbose))
+          (when (evaluation-result-< result best)
+            (when verbose (format t "~&Best plan updated: ~a" result))
+            (setf best result)))))
 
 @export
 (defun exploit-loop-problems (pddl-plan component evaluator
@@ -57,8 +62,9 @@ by the evaluator."
   (when verbose (format t "~&Running MFP ..."))
   (let ((s *standard-output*)
         (e *error-output*)
-        best-plan best-ss
-        (best-cost MOST-POSITIVE-FIXNUM))
+        (best (make-instance
+               'evaluation-result
+               :ss nil :cost MOST-POSITIVE-FIXNUM)))
     (more-labels () (%exploit-main)
       (let ((wait (make-thread (lambda () (sleep timeout))))
             (main (make-thread #'%exploit-main)))
@@ -73,4 +79,10 @@ by the evaluator."
              (destroy-thread wait)
              (go end))
            end)
-        (values best-plan best-ss best-cost)))))
+        best))))
+
+@export
+(defun constant-results (n)
+  (lambda (p ss &rest args)
+    (declare (ignore p args))
+    (make-instance 'evaluation-result :ss ss :cost n)))
