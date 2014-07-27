@@ -6,12 +6,16 @@
   :version "0.1"
   :author "Masataro Asai"
   :license "LLGPL"
-  :depends-on (:pddl :pddl.scheduler
-                     :eazy-a-star
-                     :trivial-timeout
-                     :eazylazy
-                     :inferior-shell
-                     :osicat)
+  :depends-on (:alexandria
+               :bordeaux-threads
+               :cl-syntax
+               :eazy-a-star
+               :eazylazy
+               :guicho-utilities
+               :iterate
+               :optima
+               :pddl
+               :pddl.scheduler)
   :components ((:file :package :pathname "src/package")
 	       (:module "src"
 		:depends-on (:package)

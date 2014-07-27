@@ -5,20 +5,21 @@ This file is a part of pddl.loop-detection project.
 (in-package :cl-user)
 (defpackage pddl.loop-detection-test
   (:use :cl
-	:guicho-utilities
-	:eazy-a*
-	:guicho-red-black-tree
-	:iterate
 	:alexandria
-	:optima
-	:repl-utilities
+        :bordeaux-threads
+        :eazy-a*
         :eazylazy
+        :fiveam
+        :guicho-red-black-tree
+        :guicho-utilities
+        :iterate
+        :optima
         :pddl
-	:pddl.scheduler
-        :pddl.loop-detection
-	:pddl.plan-optimizer
         :pddl.instances
-        :fiveam)
+        :pddl.loop-detection
+        :pddl.plan-optimizer
+        :pddl.scheduler
+        :repl-utilities)
   (:shadow :place)
   (:shadowing-import-from :pddl :maximize :minimize :cost)
   (:shadowing-import-from :fiveam :fail))

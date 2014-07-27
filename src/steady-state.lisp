@@ -64,11 +64,12 @@ the second requires N conses where N is the length of a steady state.
                             (when child
                               (collecting child))))))))))
 
-  @export @doc "Takes a list of movements.
+  @export
+  (defun steady-state (movements &optional (lazy t))
+    "Takes a list of movements.
 Returns a cons tree of steady states. Each steady state is
 represented by a leaf or a branch of the tree. Each leaf or a branch node
 is a mutex position index."
-  (defun steady-state (movements &optional (lazy t))
     (more-labels () (%ss-rec %ss-leaf)
        (match movements
          ((list* (movement _ resources) rest)

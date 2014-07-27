@@ -10,11 +10,7 @@
 (defsystem pddl.loop-detection-test
   :author ""
   :license ""
-  :depends-on (:pddl.loop-detection
-	       :pddl.instances
-               :eazylazy
-               :repl-utilities
-               :fiveam)
+  :depends-on (:pddl.loop-detection :fiveam)
   :components ((:module "t"
                 :components
                 ((:file :package)
@@ -24,6 +20,7 @@
                  ;; problem functions
                  (:file :basis)
                  (:file :movements)
+                 (:file :search)
                  (:file :build-problem))))
   :perform (load-op :after (op c) 
 		    (eval (read-from-string "(fiveam:run! :pddl.loop-detection)"))

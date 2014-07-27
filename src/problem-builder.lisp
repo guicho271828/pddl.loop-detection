@@ -69,13 +69,13 @@ related to each object.
       (mappend #'%releaser-states owner-releasers))))
 
   (define-local-function %component-state-p (p)
-    (some (lambda (c) (pddl-supertype-p (type p) (type c))) component))
+    (find-if (lambda (c) (pddl-supertype-p (type p) (type c))) component))
   (define-local-function %lock-p (p)
-    (some (lambda-match ((owner-lock _ l) (instance-p l p))) owner-locks))
+    (find-if (lambda-match ((owner-lock _ l) (instance-p l p))) owner-locks))
   (define-local-function %releaser-p (p)
-    (some (lambda-match ((owner-lock _ l) (instance-p l p))) owner-releasers))
+    (find-if (lambda-match ((owner-lock _ l) (instance-p l p))) owner-releasers))
   (define-local-function %owner-p (p)
-    (some (lambda-match ((owner-lock o) (instance-p p o))) owner-locks))
+    (find-if (lambda-match ((owner-lock o) (instance-p p o))) owner-locks))
 
   (define-local-function %environment ()
     "Returns The global states, that is, any states which is not describing the state

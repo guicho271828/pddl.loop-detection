@@ -6,19 +6,16 @@
 (defpackage pddl.loop-detection
   (:use :cl
         :alexandria
-        :annot.doc
+        :bordeaux-threads
         :cl-syntax
-        :eazy-a*
+        :eazy-a-star
         :eazylazy
         :guicho-red-black-tree
         :guicho-utilities
         :iterate
         :optima
-        :osicat
         :pddl
-        :pddl.plan-optimizer
-        :pddl.scheduler
-        :trivial-timeout)
+        :pddl.scheduler)
   ;; resolve conflict with pddl:cost
   (:shadowing-import-from :eazy-a* :cost)
   (:shadow :minimize :maximize))
