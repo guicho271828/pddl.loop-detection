@@ -18,8 +18,7 @@ This file is a part of pddl.loop-detection project.
         :pddl.instances
         :pddl.loop-detection
         :pddl.plan-optimizer
-        :pddl.scheduler
-        :repl-utilities)
+        :pddl.scheduler)
   (:shadow :place)
   (:shadowing-import-from :pddl :maximize :minimize :cost)
   (:shadowing-import-from :fiveam :fail))
