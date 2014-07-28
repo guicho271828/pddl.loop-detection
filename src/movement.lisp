@@ -51,8 +51,10 @@ The given schedule should be sorted beforehand."
 (defpattern movement (index resources)
   `(cons ,index ,resources))
 
+@export
 (defun movement-resources (movement)
   (cdr movement))
+@export
 (defun movement-index (movement)
   (car movement))
 
