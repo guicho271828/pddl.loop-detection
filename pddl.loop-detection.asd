@@ -9,6 +9,7 @@
   :depends-on (:alexandria
                :bordeaux-threads
                :cl-syntax
+               :cl-rlimit
                :eazy-a-star
                :eazylazy
                :guicho-utilities

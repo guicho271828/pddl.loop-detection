@@ -16,6 +16,25 @@
   (if (evaluation-result-< result1 result2)
       result1 result2))
 
+
+(defparameter *default-special-bindings*
+  `((*standard-output* . ,*standard-output*)
+    (*error-output* . ,*error-output*)
+    (*trace-output* . ,*trace-output*)
+    (*standard-input* . ,*standard-input*)
+    (*query-io* . ,*query-io*)
+    (*debug-io* . ,*debug-io*)))
+
+@export
+(defparameter *memory-limit*
+  (rlimit +rlimit-address-space+))
+@export
+(defparameter *soft-time-limit*
+  (rlimit +rlimit-cpu-time+))
+@export
+(defparameter *hard-time-limit*
+  (rlimit +rlimit-cpu-time+))
+
 (declaim (ftype (function
                  (pddl-plan t (function (pddl-problem
                                          list list list list
@@ -23,7 +42,10 @@
                                         evaluation-result)
                             &key
                             (:verbose boolean)
-                            (:timeout fixnum))
+                            (:timeout fixnum)
+                            (:soft-timeout-per-ss (or keyword fixnum))
+                            (:hard-timeout-per-ss (or keyword fixnum))
+                            (:memory-limit-per-ss (or keyword fixnum)))
                  evaluation-result)
                 exploit-loop-problems))
 
@@ -40,7 +62,10 @@
                       (reducing
                        (extract-movements c schedule)
                        by #'merge-movements))
-                #'< :key #'movement-index)))
+                #'< :key #'movement-index))
+         (*soft-time-limit* soft-timeout-per-ss)
+         (*hard-time-limit* hard-timeout-per-ss)
+         (*memory-limit* memory-limit-per-ss))
     (iter (for (values plan ss handler)
                initially (best-first-mfp movements :verbose verbose)
                then (funcall handler (cost result)))
@@ -53,18 +78,13 @@
             (when verbose (format t "~&Best plan updated: ~a" result))
             (setf best result)))))
 
-(defparameter *default-special-bindings*
-  `((*standard-output* . ,*standard-output*)
-    (*error-output* . ,*error-output*)
-    (*trace-output* . ,*trace-output*)
-    (*standard-input* . ,*standard-input*)
-    (*query-io* . ,*query-io*)
-    (*debug-io* . ,*debug-io*)))
-
-
 @export
 (defun exploit-loop-problems (pddl-plan component evaluator
-                              &key verbose (timeout MOST-POSITIVE-FIXNUM))
+                              &key verbose
+                                (timeout MOST-POSITIVE-FIXNUM)
+                                (soft-timeout-per-ss *soft-time-limit*)
+                                (hard-timeout-per-ss *hard-time-limit*)
+                                (memory-limit-per-ss *memory-limit*))
   "Returns 3 values: loop-path, ss, the real-cost of the loop path returned
 by the evaluator."
   (when verbose (format t "~&Running MFP ..."))
