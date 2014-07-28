@@ -70,6 +70,10 @@
                initially (best-first-mfp movements :verbose verbose)
                then (funcall handler (cost result)))
           (while handler)
+          (when (keywordp plan) ; :duplicated or :fail
+            (setf result worst) ; current ss should not be evaluated any
+                                ; more
+            (next-iteration))
           (for result = 
                (funcall evaluator *problem* ss
                         schedule movements component
@@ -88,9 +92,10 @@
   "Returns 3 values: loop-path, ss, the real-cost of the loop path returned
 by the evaluator."
   (when verbose (format t "~&Running MFP ..."))
-  (let ((best (make-instance
-               'evaluation-result
-               :ss nil :cost MOST-POSITIVE-FIXNUM)))
+  (let* ((worst (make-instance
+                 'evaluation-result
+                 :ss nil :cost MOST-POSITIVE-FIXNUM))
+         (best worst))
     (more-labels () (%exploit-main)
       (let ((wait (make-thread (lambda () (sleep timeout))))
             (main (make-thread #'%exploit-main)))
