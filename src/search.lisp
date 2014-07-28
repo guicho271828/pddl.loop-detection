@@ -78,6 +78,7 @@ by the evaluator."
              (format t "~&Search finished!")
              (destroy-thread wait)
              (go end))
+           (go start)
            end)
         best))))
 
