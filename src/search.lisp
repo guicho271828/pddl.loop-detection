@@ -98,17 +98,21 @@ by the evaluator."
              (tagbody
               start
                 (unless (thread-alive-p wait)
-                  (format *error-output* "~&Timeout! Search stopped.")
-                  (destroy-thread main)
+                  (when verbose
+                    (format *error-output* "~&Timeout! Search stopped."))
                   (go end))
                 (unless (thread-alive-p main)
-                  (format t "~&Search finished!")
-                  (destroy-thread wait)
+                  (when verbose
+                    (format t "~&Search finished!"))
                   (go end))
+                (sleep 1)
                 (go start)
               end)
-          (destroy-thread wait)
-          (destroy-thread main))
+          (when (thread-alive-p wait) (destroy-thread wait))
+          (when (thread-alive-p main) (destroy-thread main)))
+        (when verbose
+          (format t "~&Best result:")
+          (describe best))
         best))))
 
 @export
