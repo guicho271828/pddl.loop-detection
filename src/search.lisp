@@ -28,9 +28,7 @@
                 exploit-loop-problems))
 
 (define-local-function %exploit-main ()
-  (let* ((*standard-output* s)
-         (*error-output* e)
-         (*problem* (problem pddl-plan))
+  (let* ((*problem* (problem pddl-plan))
          (*domain* (domain pddl-plan))
          (component (ensure-list component))
          (schedule (sort-schedule
@@ -38,10 +36,11 @@
                                 :minimum-slack
                                 :verbose verbose)))
          (movements
-          (iter (for c in component)
-                (reducing
-                 (extract-movements c schedule)
-                 by #'merge-movements))))
+          (sort (iter (for c in component)
+                      (reducing
+                       (extract-movements c schedule)
+                       by #'merge-movements))
+                #'< :key #'movement-index)))
     (iter (for (values plan ss handler)
                initially (best-first-mfp movements :verbose verbose)
                then (funcall handler (cost result)))
@@ -54,15 +53,22 @@
             (when verbose (format t "~&Best plan updated: ~a" result))
             (setf best result)))))
 
+(defparameter *default-special-bindings*
+  `((*standard-output* . ,*standard-output*)
+    (*error-output* . ,*error-output*)
+    (*trace-output* . ,*trace-output*)
+    (*standard-input* . ,*standard-input*)
+    (*query-io* . ,*query-io*)
+    (*debug-io* . ,*debug-io*)))
+
+
 @export
 (defun exploit-loop-problems (pddl-plan component evaluator
                               &key verbose (timeout MOST-POSITIVE-FIXNUM))
   "Returns 3 values: loop-path, ss, the real-cost of the loop path returned
 by the evaluator."
   (when verbose (format t "~&Running MFP ..."))
-  (let ((s *standard-output*)
-        (e *error-output*)
-        (best (make-instance
+  (let ((best (make-instance
                'evaluation-result
                :ss nil :cost MOST-POSITIVE-FIXNUM)))
     (more-labels () (%exploit-main)
