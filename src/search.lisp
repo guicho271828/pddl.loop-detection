@@ -74,18 +74,21 @@ by the evaluator."
     (more-labels () (%exploit-main)
       (let ((wait (make-thread (lambda () (sleep timeout))))
             (main (make-thread #'%exploit-main)))
-        (tagbody
-           start
-           (unless (thread-alive-p wait)
-             (format *error-output* "~&Timeout! Search stopped.")
-             (destroy-thread main)
-             (go end))
-           (unless (thread-alive-p main)
-             (format t "~&Search finished!")
-             (destroy-thread wait)
-             (go end))
-           (go start)
-           end)
+        (unwind-protect
+             (tagbody
+              start
+                (unless (thread-alive-p wait)
+                  (format *error-output* "~&Timeout! Search stopped.")
+                  (destroy-thread main)
+                  (go end))
+                (unless (thread-alive-p main)
+                  (format t "~&Search finished!")
+                  (destroy-thread wait)
+                  (go end))
+                (go start)
+              end)
+          (destroy-thread wait)
+          (destroy-thread main))
         best))))
 
 @export
