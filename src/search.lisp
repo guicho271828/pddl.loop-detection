@@ -25,14 +25,25 @@
     (*query-io* . ,*query-io*)
     (*debug-io* . ,*debug-io*)))
 
+
+;; in order to make it work on 32bit systems
 @export
 (defparameter *memory-limit*
+  #+X86
+  :infinity ;MOST-POSITIVE-FIXNUM
+  #+X86-64
   (rlimit +rlimit-address-space+))
 @export
 (defparameter *soft-time-limit*
+  #+X86
+    :infinity ;MOST-POSITIVE-FIXNUM
+  #+X86-64
   (rlimit +rlimit-cpu-time+))
 @export
 (defparameter *hard-time-limit*
+  #+X86
+  :infinity ;MOST-POSITIVE-FIXNUM
+  #+X86-64
   (rlimit +rlimit-cpu-time+))
 
 (declaim (ftype (function
@@ -42,10 +53,10 @@
                                         evaluation-result)
                             &key
                             (:verbose boolean)
-                            (:timeout fixnum)
-                            (:soft-timeout-per-ss (or keyword fixnum))
-                            (:hard-timeout-per-ss (or keyword fixnum))
-                            (:memory-limit-per-ss (or keyword fixnum)))
+                            (:timeout integer)
+                            (:soft-timeout-per-ss (or keyword integer))
+                            (:hard-timeout-per-ss (or keyword integer))
+                            (:memory-limit-per-ss (or keyword integer)))
                  evaluation-result)
                 exploit-loop-problems))
 
