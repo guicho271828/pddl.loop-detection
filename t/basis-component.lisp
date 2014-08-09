@@ -1,5 +1,5 @@
-(in-package :pddl.loop-planner-test)
-(in-suite :pddl.loop-planner)
+(in-package :pddl.loop-detection-test)
+(in-suite :pddl.loop-detection)
 
 (define (domain assemble)
   (:requirements :strips :action-costs)

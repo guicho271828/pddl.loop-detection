@@ -1,5 +1,5 @@
 
-(in-package :pddl.loop-planner)
+(in-package :pddl.loop-detection)
 (use-syntax :annot)
 
 @export
