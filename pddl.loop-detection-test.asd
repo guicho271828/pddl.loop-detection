@@ -19,9 +19,11 @@
                  (:file :mutex)
                  ;; problem functions
                  (:file :basis)
+                 (:file :basis-component)
                  (:file :movements)
                  (:file :search)
-                 (:file :build-problem))))
+                 (:file :build-problem)
+                 (:file :exploit-loop-problems))))
   :perform (load-op :after (op c) 
 		    (eval (read-from-string "(fiveam:run! :pddl.loop-detection)"))
 		    (asdf:clear-system c)))

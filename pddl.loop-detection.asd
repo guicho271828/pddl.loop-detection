@@ -29,7 +29,8 @@
 		 (:file :mfp-with-filtering)
                  (:file :best-first-mfp)
 		 (:file :problem-builder)
-                 (:file :search))))
+                 (:file :search)
+                 (:file :evaluator))))
   :description ""
   :long-description
   #.(with-open-file (stream (merge-pathnames
