@@ -15,9 +15,7 @@ This file is a part of pddl.loop-detection project.
         :iterate
         :optima
         :pddl
-        :pddl.instances
         :pddl.loop-detection
-        :pddl.plan-optimizer
         :pddl.scheduler)
   (:shadow :place)
   (:shadowing-import-from :pddl :maximize :minimize :cost)
