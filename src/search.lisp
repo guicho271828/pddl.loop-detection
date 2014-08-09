@@ -25,27 +25,6 @@
     (*query-io* . ,*query-io*)
     (*debug-io* . ,*debug-io*)))
 
-
-;; in order to make it work on 32bit systems
-@export
-(defparameter *memory-limit*
-  #+X86
-  :infinity ;MOST-POSITIVE-FIXNUM
-  #+X86-64
-  (rlimit +rlimit-address-space+))
-@export
-(defparameter *soft-time-limit*
-  #+X86
-    :infinity ;MOST-POSITIVE-FIXNUM
-  #+X86-64
-  (rlimit +rlimit-cpu-time+))
-@export
-(defparameter *hard-time-limit*
-  #+X86
-  :infinity ;MOST-POSITIVE-FIXNUM
-  #+X86-64
-  (rlimit +rlimit-cpu-time+))
-
 (declaim (ftype (function
                  (pddl-plan t (function (pddl-problem
                                          list list list list
