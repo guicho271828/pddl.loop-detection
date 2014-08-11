@@ -69,6 +69,8 @@
     (start p2 s1 m1) (assemble p2 s0 s1 m1 pa21) (end p2 s1 m1)
     (start p2 s2 m2) (assemble p2 s1 s2 m2 pa22) (end p2 s2 m2)))
 
+(defvar *assemble-schedule*)
+
 (test assemble
   (let ((*domain* assemble) (*problem* assemblep)) ; see t/data.lisp
     (let* ((actions (parse-plan +assembleplan+)) ; see t/data.lisp
@@ -77,8 +79,8 @@
            (last-env (simulate-plan env)))
       (is (= 21 (cost last-env)))
       (is-true (goal-p assemblep (states last-env)))
-      (setf *schedule*
+      (setf *assemble-schedule*
             (sort-schedule
              (reschedule plan :minimum-slack :verbose t)))
-      (print-timed-action-graphically *schedule*)
-      (is (= 17 (timed-state-time (timed-action-end (lastcar *schedule*))))))))
+      (print-timed-action-graphically *assemble-schedule*)
+      (is (= 17 (timed-state-time (timed-action-end (lastcar *assemble-schedule*))))))))
